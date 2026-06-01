@@ -62,7 +62,9 @@ class AmbientEngine {
     if (this.ctx && this.ctx.state === "suspended") {
       try {
         await this.ctx.resume();
-      } catch (_) {}
+      } catch (e) {
+        console.warn("AudioContext.resume failed:", e);
+      }
     }
   }
 
@@ -298,7 +300,9 @@ class AmbientEngine {
     built.out.connect(userGain).connect(this.masterGain);
     this.tracks[key] = { ...built, userGain };
     this._rampGain(userGain.gain, Math.max(0, Math.min(1, volume)), 0.6);
-  }  disable(key) {
+  }
+
+  disable(key) {
     const t = this.tracks[key];
     if (!t) return;
     this._rampGain(t.userGain.gain, 0, 0.4);
@@ -346,7 +350,7 @@ class AmbientEngine {
         const buf = await this.ctx.decodeAudioData(arr);
         buffers.push(buf);
       } catch (e) {
-        // skip
+        console.warn(`failed to load meow asset ${url}:`, e);
       }
     }
     this.meowBuffers = buffers;

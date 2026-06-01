@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useAnimationControls } from "framer-motion";
+import { toast } from "sonner";
 import CatSprite from "./CatSprite";
 import SpeechBubble from "./SpeechBubble";
 import NotesPanel from "./NotesPanel";
@@ -12,21 +13,17 @@ import {
   registerServiceWorker,
 } from "../lib/notifications";
 import ui from "../lib/uiSounds";
-import { engine } from "../lib/audio";
-import { toast } from "sonner";
+import useBubble from "../hooks/useBubble";
+import useDueReminders from "../hooks/useDueReminders";
+import useWander from "../hooks/useWander";
 
-const HOME_RIGHT = 24; // px from right edge
-const HOME_TOP = 10; // px from top
+const HOME_RIGHT = 24;
+const HOME_TOP = 10;
 const SPRITE_SIZE = 84;
 
-// timings
-const DUE_POLL_MS = 30 * 1000;
 const HEARTBEAT_MS = 60 * 1000;
 const NUDGE_MIN_MS = 20 * 60 * 1000;
 const NUDGE_MAX_MS = 30 * 60 * 1000;
-const WANDER_MIN_MS = 45 * 1000;
-const WANDER_MAX_MS = 90 * 1000;
-const BUBBLE_AUTO_MS = 7000;
 
 function randBetween(a, b) {
   return a + Math.random() * (b - a);
@@ -39,20 +36,56 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [notes, setNotes] = useState([]);
   const [reminders, setReminders] = useState([]);
-  const [bubble, setBubble] = useState(null); // {message, key}
   const [facing, setFacing] = useState("right");
   const [petState, setPetState] = useState("idle"); // idle | walk | hop | focused
-  const usedLinesRef = useRef([]); // avoid repeating nudge lines in session
-  const bubbleTimerRef = useRef(null);
-  const wanderTimerRef = useRef(null);
+
+  const usedLinesRef = useRef([]);
   const dragStartRef = useRef(null);
   const focusRunningRef = useRef(focusRunning);
+  const panelOpenRef = useRef(false);
+  const bubbleRef = useRef(null);
 
   const controls = useAnimationControls();
 
-  // ---------- Load ----------
+  // ---------- Bubble (hook) ----------
+  const triggerHop = useCallback(() => {
+    if (focusRunningRef.current) return;
+    setPetState("hop");
+    setTimeout(
+      () => setPetState(focusRunningRef.current ? "focused" : "idle"),
+      600
+    );
+  }, []);
+
+  const { bubble, queueBubble, dismissBubble } = useBubble({ onQueue: triggerHop });
+
+  // keep refs in sync with state for cross-effect reads (wander, nudge)
   useEffect(() => {
-    // register SW for background notifications
+    panelOpenRef.current = panelOpen;
+  }, [panelOpen]);
+  useEffect(() => {
+    bubbleRef.current = bubble;
+  }, [bubble]);
+  useEffect(() => {
+    focusRunningRef.current = focusRunning;
+    setPetState(focusRunning ? "focused" : "idle");
+  }, [focusRunning]);
+
+  // ---------- Load pet on mount ----------
+  const refreshLists = useCallback(async () => {
+    try {
+      const [n, r] = await Promise.all([
+        api.listNotes(deviceId),
+        api.listReminders(deviceId),
+      ]);
+      setNotes(n || []);
+      setReminders(r || []);
+    } catch (e) {
+      console.warn("refreshLists failed:", e);
+    }
+  }, [deviceId]);
+
+  useEffect(() => {
     registerServiceWorker();
     let mounted = true;
     (async () => {
@@ -67,27 +100,13 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
         if (data.welcome_back) queueBubble(data.welcome_back);
         await refreshLists();
       } catch (e) {
-        console.error(e);
+        console.warn("initial pet load failed:", e);
       }
     })();
     return () => {
       mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deviceId]);
-
-  const refreshLists = useCallback(async () => {
-    try {
-      const [n, r] = await Promise.all([
-        api.listNotes(deviceId),
-        api.listReminders(deviceId),
-      ]);
-      setNotes(n || []);
-      setReminders(r || []);
-    } catch (e) {
-      console.error(e);
-    }
-  }, [deviceId]);
+  }, [deviceId, queueBubble, refreshLists]);
 
   // ---------- Naming ----------
   const handleName = async (name) => {
@@ -95,7 +114,6 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
       const created = await api.createPet(deviceId, name);
       setPet(created);
       setShowName(false);
-      // request notification perms after first interaction
       const perm = await ensureNotificationPermission();
       if (perm === "granted") {
         toast.success("notifications enabled — i'll let you know when reminders are due 🐾");
@@ -103,83 +121,40 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
       queueBubble(`hi! i'm ${name}. tap me anytime to jot a note or a reminder.`);
       await refreshLists();
     } catch (e) {
+      console.warn("create pet failed:", e);
       toast.error("hmm, couldn't save the name. try again?");
     }
   };
 
-  // ---------- Bubble ----------
-  const queueBubble = useCallback((message) => {
-    if (!message) return;
-    if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
-    setBubble({ message, key: Date.now() + Math.random() });
-    if (!focusRunningRef.current) {
-      setPetState("hop");
-      setTimeout(() => setPetState(focusRunningRef.current ? "focused" : "idle"), 600);
-    }
-    bubbleTimerRef.current = setTimeout(() => setBubble(null), BUBBLE_AUTO_MS);
-  }, []);
-
-  const dismissBubble = () => {
-    if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
-    setBubble(null);
-  };
-
-  // ---------- Polling: due reminders ----------
-  useEffect(() => {
-    if (!pet) return;
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const due = await api.dueReminders(deviceId);
-        if (cancelled || !due || due.length === 0) return;
-        // reflect "fired" in state
-        setReminders((prev) =>
-          prev.map((r) => {
-            const hit = due.find((d) => d.id === r.id);
-            return hit ? { ...r, fired: true } : r;
-          })
-        );
-        // show messages one-by-one
-        for (const d of due) {
-          queueBubble(d.message || `Reminder: ${d.content}`);
-          // Unified ~4s cat meow alert (ducks ambient, respects mute).
-          engine.playMeowAlert().catch(() => {});
-          sendBrowserNotification(`${pet.name} 🐾`, d.message || d.content, `reminder-${d.id}`);
-          usedLinesRef.current.push(d.message);
-          // brief stagger so multiple due reminders don't overwrite each other instantly
-          await new Promise((r) => setTimeout(r, 1200));
-        }
-      } catch (e) {
-        // silent
-      }
-    };
-    const id = setInterval(poll, DUE_POLL_MS);
-    poll();
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [pet, deviceId, queueBubble]);
+  // ---------- Due-reminder polling (hook) ----------
+  useDueReminders({
+    pet,
+    deviceId,
+    queueBubble,
+    onFired: (d) => {
+      setReminders((prev) => prev.map((r) => (r.id === d.id ? { ...r, fired: true } : r)));
+      usedLinesRef.current.push(d.message);
+    },
+  });
 
   // ---------- Heartbeat ----------
   useEffect(() => {
-    if (!pet) return;
+    if (!pet) return undefined;
     const id = setInterval(() => {
-      api.heartbeat(deviceId).catch(() => {});
+      api.heartbeat(deviceId).catch((e) => console.warn("heartbeat failed:", e));
     }, HEARTBEAT_MS);
     return () => clearInterval(id);
   }, [pet, deviceId]);
 
-  // ---------- Nudges ----------
+  // ---------- Nudge loop ----------
   useEffect(() => {
-    if (!pet) return;
+    if (!pet) return undefined;
     let cancelled = false;
-    let timeout;
+    let timeout = null;
     const schedule = () => {
       const wait = randBetween(NUDGE_MIN_MS, NUDGE_MAX_MS);
       timeout = setTimeout(async () => {
         if (cancelled) return;
-        // skip if panel open or bubble already showing
         if (!panelOpenRef.current && !bubbleRef.current) {
           try {
             const { message } = await api.nudge(deviceId, usedLinesRef.current);
@@ -187,7 +162,9 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
               queueBubble(message);
               usedLinesRef.current.push(message);
             }
-          } catch (_) {}
+          } catch (e) {
+            console.warn("nudge fetch failed:", e);
+          }
         }
         schedule();
       }, wait);
@@ -199,74 +176,30 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
     };
   }, [pet, deviceId, queueBubble]);
 
-  // refs for the nudge loop to read latest values without re-subscribing
-  const panelOpenRef = useRef(false);
-  const bubbleRef = useRef(null);
+  // ---------- Focus session completion bubble (meow already fired in FocusTimer) ----------
   useEffect(() => {
-    panelOpenRef.current = panelOpen;
-  }, [panelOpen]);
-  useEffect(() => {
-    bubbleRef.current = bubble;
-  }, [bubble]);
-
-  // ---------- Focus state syncing ----------
-  useEffect(() => {
-    focusRunningRef.current = focusRunning;
-    if (focusRunning) {
-      setPetState("focused");
-    } else {
-      setPetState("idle");
+    if (!sessionMessage || !sessionMessage.text) return;
+    queueBubble(sessionMessage.text);
+    if (pet) {
+      sendBrowserNotification(
+        `${pet.name} 🐾`,
+        sessionMessage.text,
+        `session-${sessionMessage.ts}`
+      );
     }
-  }, [focusRunning]);
+    usedLinesRef.current.push(sessionMessage.text);
+  }, [sessionMessage, pet, queueBubble]);
 
-  // When a focus session completes, show the message (meow already fired in FocusTimer)
-  useEffect(() => {
-    if (!sessionMessage) return;
-    if (sessionMessage.text) {
-      queueBubble(sessionMessage.text);
-      if (pet) {
-        sendBrowserNotification(`${pet.name} 🐾`, sessionMessage.text, `session-${Date.now()}`);
-      }
-      usedLinesRef.current.push(sessionMessage.text);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionMessage]);
-
-  // ---------- Wander ----------
-  useEffect(() => {
-    if (!pet) return;
-    let cancelled = false;
-    const wander = async () => {
-      if (cancelled) return;
-      // skip if panel open, bubble showing, OR focus session running
-      if (panelOpenRef.current || bubbleRef.current || focusRunningRef.current) {
-        wanderTimerRef.current = setTimeout(wander, randBetween(WANDER_MIN_MS, WANDER_MAX_MS));
-        return;
-      }
-      const distance = randBetween(120, 320);
-      setPetState("walk");
-      setFacing("left");
-      await controls.start({
-        x: -distance,
-        transition: { duration: distance / 80, ease: "linear" },
-      });
-      if (cancelled) return;
-      // pause
-      await new Promise((r) => setTimeout(r, randBetween(500, 1400)));
-      setFacing("right");
-      await controls.start({
-        x: 0,
-        transition: { duration: distance / 80, ease: "linear" },
-      });
-      setPetState("idle");
-      wanderTimerRef.current = setTimeout(wander, randBetween(WANDER_MIN_MS, WANDER_MAX_MS));
-    };
-    wanderTimerRef.current = setTimeout(wander, randBetween(WANDER_MIN_MS, WANDER_MAX_MS));
-    return () => {
-      cancelled = true;
-      if (wanderTimerRef.current) clearTimeout(wanderTimerRef.current);
-    };
-  }, [pet, controls]);
+  // ---------- Wander (hook) ----------
+  useWander({
+    pet,
+    controls,
+    panelOpenRef,
+    bubbleRef,
+    focusRunningRef,
+    setPetState,
+    setFacing,
+  });
 
   // ---------- Drag handlers ----------
   const onDragStart = (_e, info) => {
@@ -275,7 +208,7 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
   };
 
   const onDragEnd = (_e, info) => {
-    setPetState("idle");
+    setPetState(focusRunningRef.current ? "focused" : "idle");
     const start = dragStartRef.current;
     const dx = info.point.x - (start?.x ?? info.point.x);
     const dy = info.point.y - (start?.y ?? info.point.y);
@@ -284,7 +217,6 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
     if (isClick) {
       handlePetClick();
     } else {
-      // ease back home
       controls.start({
         x: 0,
         y: 0,
@@ -300,25 +232,36 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
     setPanelOpen((v) => !v);
     if (!focusRunningRef.current) {
       setPetState("hop");
-      setTimeout(() => setPetState(focusRunningRef.current ? "focused" : "idle"), 600);
+      setTimeout(
+        () => setPetState(focusRunningRef.current ? "focused" : "idle"),
+        600
+      );
     }
   };
 
   // ---------- CRUD passthroughs ----------
   const addNote = async (text) => {
-    const created = await api.createNote(deviceId, text);
-    setNotes((prev) => [created, ...prev]);
-    ui.click();
-    queueBubble("got it — tucked into the desk drawer.");
+    try {
+      const created = await api.createNote(deviceId, text);
+      setNotes((prev) => [created, ...prev]);
+      ui.click();
+      queueBubble("got it — tucked into the desk drawer.");
+    } catch (e) {
+      console.warn("addNote failed:", e);
+    }
   };
   const addReminder = async (text) => {
-    const localIso = new Date().toISOString();
-    const created = await api.createReminder(deviceId, text, localIso);
-    setReminders((prev) =>
-      [...prev, created].sort((a, b) => a.trigger_at.localeCompare(b.trigger_at))
-    );
-    ui.click();
-    queueBubble(`okay! i'll remind you about "${created.content}" 🐾`);
+    try {
+      const localIso = new Date().toISOString();
+      const created = await api.createReminder(deviceId, text, localIso);
+      setReminders((prev) =>
+        [...prev, created].sort((a, b) => a.trigger_at.localeCompare(b.trigger_at))
+      );
+      ui.click();
+      queueBubble(`okay! i'll remind you about "${created.content}" 🐾`);
+    } catch (e) {
+      console.warn("addReminder failed:", e);
+    }
   };
   const deleteNote = async (id) => {
     await api.deleteNote(id);
@@ -338,7 +281,6 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
     <>
       <NameModal open={showName} onSubmit={handleName} />
 
-      {/* Floating pet anchored to top-right */}
       {pet && (
         <div
           data-testid="pet-anchor"
@@ -373,7 +315,6 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
         </div>
       )}
 
-      {/* Speech bubble — anchored relative to home position */}
       {pet && bubble && (
         <div
           className="fixed z-[101] pointer-events-auto"
@@ -383,7 +324,6 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
         </div>
       )}
 
-      {/* Notes panel */}
       {pet && panelOpen && (
         <div
           className="fixed z-[102] pointer-events-auto"

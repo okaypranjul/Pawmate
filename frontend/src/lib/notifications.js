@@ -57,5 +57,7 @@ export function sendBrowserNotification(title, body, tag) {
     }
     const n = new Notification(title, { body });
     setTimeout(() => n.close(), 8000);
-  } catch (_) {}
+  } catch (e) {
+    console.warn("sendBrowserNotification failed:", e);
+  }
 }

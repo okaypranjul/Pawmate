@@ -20,14 +20,25 @@ export default function ChatTab({ petName, deviceId, onSend }) {
     if (!text || busy) return;
     ui.click();
     setBusy(true);
-    const next = [...history, { role: "user", text }];
+    const userMsg = { id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, role: "user", text };
+    const next = [...history, userMsg];
     setHistory(next);
     setDraft("");
     try {
       const reply = await onSend(text, history);
-      setHistory([...next, { role: "pet", text: reply || "purr." }]);
-    } catch (_) {
-      setHistory([...next, { role: "pet", text: "hmm, couldn't reach the brain — try again?" }]);
+      const petMsg = {
+        id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        role: "pet",
+        text: reply || "purr.",
+      };
+      setHistory([...next, petMsg]);
+    } catch (e) {
+      const errMsg = {
+        id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        role: "pet",
+        text: "hmm, couldn't reach the brain — try again?",
+      };
+      setHistory([...next, errMsg]);
     } finally {
       setBusy(false);
     }
@@ -48,9 +59,9 @@ export default function ChatTab({ petName, deviceId, onSend }) {
             <span className="font-pixel text-xs">try &quot;tell me a joke&quot; or &quot;how are you?&quot;</span>
           </div>
         )}
-        {history.map((m, i) => (
+        {history.map((m) => (
           <div
-            key={i}
+            key={m.id}
             data-testid={`chat-msg-${m.role}`}
             className={`max-w-[85%] rounded-lg border-2 border-[#4A3B32] px-3 py-2 text-sm ${
               m.role === "user"
