@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import "@/App.css";
 import { Toaster } from "sonner";
 import PetCompanion from "./components/PetCompanion";
-import { StickyNote, Bell, Sparkles, MousePointerClick } from "lucide-react";
+import FocusTimer from "./components/FocusTimer";
+import SoundDock from "./components/SoundDock";
+import { StickyNote, Bell, Sparkles, MousePointerClick, Timer, Music } from "lucide-react";
 
 function FeatureCard({ icon, title, body }) {
   return (
@@ -17,6 +19,13 @@ function FeatureCard({ icon, title, body }) {
 }
 
 export default function App() {
+  const [focusRunning, setFocusRunning] = useState(false);
+  const [sessionMessage, setSessionMessage] = useState(null);
+
+  const handleSessionComplete = useCallback((message, sessionKey) => {
+    setSessionMessage({ text: message, sessionKey, ts: Date.now() });
+  }, []);
+
   return (
     <div className="App min-h-screen cozy-grid">
       <Toaster
@@ -50,16 +59,27 @@ export default function App() {
             <span className="text-[#E07A5F]">pixel pet</span>
           </h1>
           <p className="mt-5 text-base sm:text-lg text-[#4A3B32]/85 max-w-xl leading-relaxed">
-            a cozy little cat lives at the top of your screen. they hold onto your notes,
-            nudge you about reminders, and pop by to say hi — never spammy, always sweet.
+            a cozy little cat lives at the top of your screen. they hold your notes,
+            nudge you about reminders, keep focus with a pomodoro, and layer ambient
+            sounds while you work — never spammy, always sweet.
           </p>
-          <div className="mt-6 inline-flex items-center gap-2 text-sm text-[#8A7968]">
-            <MousePointerClick size={16} className="text-[#E07A5F]" />
-            <span>tap the cat in the top-right to open their desk →</span>
+          <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[#8A7968]">
+            <span className="inline-flex items-center gap-2">
+              <MousePointerClick size={16} className="text-[#E07A5F]" />
+              tap the cat (top-right) for notes
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Timer size={16} className="text-[#81B29A]" />
+              focus tab on the left
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Music size={16} className="text-[#E07A5F]" />
+              sound dock on the right
+            </span>
           </div>
         </header>
 
-        <section className="grid sm:grid-cols-3 gap-5">
+        <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <FeatureCard
             icon={<Bell size={18} className="text-[#4A3B32]" />}
             title="natural reminders"
@@ -67,13 +87,18 @@ export default function App() {
           />
           <FeatureCard
             icon={<StickyNote size={18} className="text-[#4A3B32]" />}
-            title="quick notes"
-            body="jot anything down. it stays put across refreshes, on this device, kept tidy in your pet's little desk drawer."
+            title="quick notes & chat"
+            body="jot anything down or talk to your pet — they reply in character, fourth-wall and all."
           />
           <FeatureCard
-            icon={<Sparkles size={18} className="text-[#4A3B32]" />}
-            title="alive, not noisy"
-            body="occasional in-character check-ins generated fresh each time — never the same line twice in a session."
+            icon={<Timer size={18} className="text-[#4A3B32]" />}
+            title="focus pomodoro"
+            body="deep work · flow state · break. counts daily sessions and your pet settles into focus mode with you."
+          />
+          <FeatureCard
+            icon={<Music size={18} className="text-[#4A3B32]" />}
+            title="ambient dock"
+            body="layer rain · ocean · forest · café · lo-fi · white noise with per-track sliders. all locally generated."
           />
         </section>
 
@@ -83,36 +108,24 @@ export default function App() {
           </h2>
           <ol className="space-y-3 text-[#4A3B32] text-sm sm:text-base">
             <li className="flex gap-3">
-              <span className="font-pixel text-2xl text-[#E07A5F] leading-none w-7 shrink-0">
-                1
-              </span>
-              <span>name your pet — they'll remember it across visits.</span>
+              <span className="font-pixel text-2xl text-[#E07A5F] leading-none w-7 shrink-0">1</span>
+              <span>name your pet — they'll remember it across visits and devices on this browser.</span>
             </li>
             <li className="flex gap-3">
-              <span className="font-pixel text-2xl text-[#E07A5F] leading-none w-7 shrink-0">
-                2
-              </span>
-              <span>
-                tap them to open the desk; add notes and natural-language reminders.
-              </span>
+              <span className="font-pixel text-2xl text-[#E07A5F] leading-none w-7 shrink-0">2</span>
+              <span>tap them to open the desk; add notes, reminders, or chat in character.</span>
             </li>
             <li className="flex gap-3">
-              <span className="font-pixel text-2xl text-[#E07A5F] leading-none w-7 shrink-0">
-                3
-              </span>
-              <span>
-                they'll hop and pop a speech bubble when something is due — even on
-                other tabs (with notifications enabled).
-              </span>
+              <span className="font-pixel text-2xl text-[#E07A5F] leading-none w-7 shrink-0">3</span>
+              <span>open the focus tab on the left; pick deep work · flow · break; your pet goes quiet to focus with you.</span>
             </li>
             <li className="flex gap-3">
-              <span className="font-pixel text-2xl text-[#E07A5F] leading-none w-7 shrink-0">
-                4
-              </span>
-              <span>
-                they wander gently across the top now and then — try dragging them
-                somewhere new; they'll mosey home.
-              </span>
+              <span className="font-pixel text-2xl text-[#E07A5F] leading-none w-7 shrink-0">4</span>
+              <span>open the sound dock on the right; layer ambient sounds — they fade in/out and remember your mix.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="font-pixel text-2xl text-[#E07A5F] leading-none w-7 shrink-0">5</span>
+              <span>system notifications fire when reminders are due — even with another tab focused (install as a PWA for best results).</span>
             </li>
           </ol>
         </section>
@@ -122,8 +135,12 @@ export default function App() {
         </footer>
       </main>
 
+      {/* Side panels */}
+      <FocusTimer onRunningChange={setFocusRunning} onSessionComplete={handleSessionComplete} />
+      <SoundDock />
+
       {/* The floating pet itself */}
-      <PetCompanion />
+      <PetCompanion focusRunning={focusRunning} sessionMessage={sessionMessage} />
     </div>
   );
 }

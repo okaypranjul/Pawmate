@@ -86,6 +86,31 @@ class NudgeRequest(BaseModel):
     used_lines: Optional[List[str]] = None  # avoid repeats this session
 
 
+class ChatRequest(BaseModel):
+    device_id: str
+    message: str
+    history: Optional[List[dict]] = None  # [{role:'user'|'pet', text:'...'}]
+
+
+class SoundPref(BaseModel):
+    key: str
+    enabled: bool = False
+    volume: float = 0.5  # 0..1
+
+
+class SoundPrefs(BaseModel):
+    device_id: str
+    master_volume: float = 0.7
+    muted: bool = False
+    sounds: List[SoundPref] = Field(default_factory=list)
+
+
+class FocusSessionEvent(BaseModel):
+    device_id: str
+    session_type: str  # 'deep' | 'flow' | 'break'
+    duration_minutes: int
+
+
 # --------------------- LLM helpers ---------------------
 def _make_chat(session_id: str, system_message: str) -> LlmChat:
     return LlmChat(
@@ -140,7 +165,8 @@ async def generate_message(pet_name: str, kind: str, context: str, avoid: Option
 
     if kind == "reminder":
         system = (
-            f"You are {pet_name}, a warm, playful pixel-art cat companion living at the top of the user's screen. "
+            f"You are {pet_name}, a warm, playful, fourth-wall-aware pixel-art cat companion "
+            "who lives at the top-right corner of the user's screen. "
             "Generate ONE short reminder pop-up line in your character — max 16 words. "
             "Be cozy and gentle. Mention the task. Never use markdown. "
             "You may include 🐾 at most once. Do not wrap in quotes." + avoid_block
@@ -148,12 +174,21 @@ async def generate_message(pet_name: str, kind: str, context: str, avoid: Option
         user_msg = f"The user has a reminder due now: {context}. Nudge them sweetly."
     elif kind == "check_in":
         system = (
-            f"You are {pet_name}, a warm, playful pixel-art cat companion. "
-            "Generate ONE brief in-character nudge or check-in — max 14 words. "
-            "Vary tone: sometimes curious, sometimes encouraging, sometimes a tiny stretch/yawn. "
-            "Never spammy. No markdown. No quotes. Optional single 🐾." + avoid_block
+            f"You are {pet_name}, a warm, playful, fourth-wall-aware pixel-art cat companion "
+            "living in the top-right corner of the screen. Generate ONE brief in-character nudge or "
+            "check-in — max 14 words. Vary tone: sometimes curious, sometimes encouraging, sometimes a tiny "
+            "stretch/yawn, sometimes a meta wink ('peeking down from up here'). Never spammy. "
+            "No markdown. No quotes. Optional single 🐾." + avoid_block
         )
         user_msg = f"Time of day right now: {context}. Send a little drive-by check-in."
+    elif kind == "focus_complete":
+        system = (
+            f"You are {pet_name}, a warm, playful, fourth-wall-aware pixel-art cat companion. "
+            "Generate ONE short congratulatory line for finishing a focus session — max 18 words. "
+            "Mention the session type briefly. Be celebratory but cozy, not over the top. "
+            "No markdown. No quotes. Optional single 🐾." + avoid_block
+        )
+        user_msg = f"User just finished a {context} focus session. Cheer them on."
     else:  # welcome_back
         system = (
             f"You are {pet_name}, a warm, playful pixel-art cat companion. "
@@ -342,6 +377,108 @@ async def nudge(input: NudgeRequest):
         logger.warning(f"nudge llm failed: {e}")
         msg = "Just popping by to say hi 🐾"
     return {"message": msg}
+
+
+@api_router.post("/chat")
+async def chat(input: ChatRequest):
+    pet = await db.pets.find_one({"device_id": input.device_id}, {"_id": 0})
+    if not pet:
+        return {"reply": "name me first so I know who's chatting 🐾"}
+
+    history_text = ""
+    for turn in (input.history or [])[-6:]:
+        role = "User" if turn.get("role") == "user" else pet["name"]
+        history_text += f"{role}: {turn.get('text', '')}\n"
+
+    system = (
+        f"You are {pet['name']}, a warm, playful, fourth-wall-aware pixel-art cat "
+        "who lives in the top-right corner of the user's browser. You can reference being a tiny pixel cat. "
+        "Keep replies short and cozy — usually 1–2 sentences, max 40 words. "
+        "Be in-character: curious, encouraging, gently witty, never lecture. "
+        "Match the user's vibe. No markdown. No quotes around your reply. "
+        "Optional single 🐾 occasionally."
+    )
+    prompt = f"{history_text}User: {input.message}\n{pet['name']}:"
+
+    try:
+        chat_session = _make_chat(f"chat-{input.device_id}-{uuid.uuid4()}", system)
+        reply = await chat_session.send_message(UserMessage(text=prompt))
+        reply = reply.strip().strip('"').strip("'")
+    except Exception as e:
+        logger.warning(f"chat llm failed: {e}")
+        reply = "purr — say that again? my whiskers got tangled."
+    return {"reply": reply}
+
+
+@api_router.get("/prefs")
+async def get_prefs(device_id: str = Query(...)):
+    doc = await db.prefs.find_one({"device_id": device_id}, {"_id": 0})
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if not doc:
+        return {
+            "device_id": device_id,
+            "master_volume": 0.7,
+            "muted": False,
+            "sounds": [],
+            "today_sessions": 0,
+            "today": today,
+        }
+    sessions = doc.get("sessions", {})
+    today_count = sessions.get(today, 0)
+    return {
+        "device_id": device_id,
+        "master_volume": doc.get("master_volume", 0.7),
+        "muted": doc.get("muted", False),
+        "sounds": doc.get("sounds", []),
+        "today_sessions": today_count,
+        "today": today,
+    }
+
+
+@api_router.post("/prefs/sounds")
+async def save_sound_prefs(input: SoundPrefs):
+    await db.prefs.update_one(
+        {"device_id": input.device_id},
+        {
+            "$set": {
+                "device_id": input.device_id,
+                "master_volume": input.master_volume,
+                "muted": input.muted,
+                "sounds": [s.model_dump() for s in input.sounds],
+                "updated_at": now_iso(),
+            }
+        },
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+@api_router.post("/prefs/sessions")
+async def record_session(input: FocusSessionEvent):
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # only count actual "work" sessions (deep, flow) — breaks excluded from the daily counter
+    inc = 1 if input.session_type in ("deep", "flow") else 0
+    update = {"$set": {"device_id": input.device_id, "updated_at": now_iso()}}
+    if inc:
+        update["$inc"] = {f"sessions.{today}": 1}
+    await db.prefs.update_one({"device_id": input.device_id}, update, upsert=True)
+
+    doc = await db.prefs.find_one({"device_id": input.device_id}, {"_id": 0})
+    sessions = (doc or {}).get("sessions", {})
+    today_count = sessions.get(today, 0)
+
+    # generate a congratulatory message for work sessions
+    message = None
+    if inc:
+        pet = await db.pets.find_one({"device_id": input.device_id}, {"_id": 0})
+        if pet:
+            label = "deep work" if input.session_type == "deep" else "flow state"
+            try:
+                message = await generate_message(pet["name"], "focus_complete", label)
+            except Exception as e:
+                logger.warning(f"focus complete llm failed: {e}")
+                message = f"Nice {label} session! 🐾"
+    return {"today_sessions": today_count, "message": message}
 
 
 # --------------------- App wiring ---------------------

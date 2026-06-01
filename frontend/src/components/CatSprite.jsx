@@ -9,11 +9,18 @@ const SPRITE_URL =
  */
 export default function CatSprite({ state = "idle", facing = "right", size = 80 }) {
   const animClass =
-    state === "walk" ? "anim-walk" : state === "hop" ? "anim-hop" : "anim-bob";
+    state === "walk"
+      ? "anim-walk"
+      : state === "hop"
+      ? "anim-hop"
+      : state === "focused"
+      ? "anim-focus"
+      : "anim-bob";
 
   return (
     <div
       data-testid="cat-sprite"
+      data-state={state}
       className={`${animClass} pointer-events-none select-none`}
       style={{
         width: size,

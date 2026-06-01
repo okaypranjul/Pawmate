@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Bell, StickyNote, Trash2, X, Loader2, Clock } from "lucide-react";
+import { Bell, StickyNote, Trash2, X, Loader2, Clock, MessageCircle } from "lucide-react";
+import ChatTab from "./ChatTab";
 
 function formatTime(iso) {
   try {
@@ -27,6 +28,7 @@ function formatTime(iso) {
 export default function NotesPanel({
   open,
   petName,
+  deviceId,
   notes,
   reminders,
   onClose,
@@ -34,6 +36,7 @@ export default function NotesPanel({
   onAddReminder,
   onDeleteNote,
   onDeleteReminder,
+  onChat,
 }) {
   const [tab, setTab] = useState("reminders");
   const [noteText, setNoteText] = useState("");
@@ -92,7 +95,7 @@ export default function NotesPanel({
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 px-3 pt-3">
+      <div className="flex gap-2 px-3 pt-3 flex-wrap">
         <button
           data-testid="tab-reminders"
           onClick={() => setTab("reminders")}
@@ -121,11 +124,23 @@ export default function NotesPanel({
           notes
           <span className="font-pixel text-base leading-none ml-1">{notes.length}</span>
         </button>
+        <button
+          data-testid="tab-chat"
+          onClick={() => setTab("chat")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-[#4A3B32] text-sm font-bold transition-transform ${
+            tab === "chat"
+              ? "bg-[#E07A5F] text-[#FDFBF7] shadow-cozy-sm"
+              : "bg-[#FDFBF7] text-[#4A3B32]"
+          }`}
+        >
+          <MessageCircle size={14} />
+          chat
+        </button>
       </div>
 
       {/* Body */}
       <div className="px-4 py-3 flex-1 overflow-y-auto cozy-scroll">
-        {tab === "reminders" ? (
+        {tab === "reminders" && (
           <ul data-testid="reminders-list" className="space-y-2">
             {reminders.length === 0 && (
               <li className="text-center text-sm text-[#8A7968] py-6">
@@ -172,7 +187,8 @@ export default function NotesPanel({
               </li>
             ))}
           </ul>
-        ) : (
+        )}
+        {tab === "notes" && (
           <ul data-testid="notes-list" className="space-y-2">
             {notes.length === 0 && (
               <li className="text-center text-sm text-[#8A7968] py-6">
@@ -200,9 +216,13 @@ export default function NotesPanel({
             ))}
           </ul>
         )}
+        {tab === "chat" && (
+          <ChatTab petName={petName} deviceId={deviceId} onSend={onChat} />
+        )}
       </div>
 
       {/* Footer input */}
+      {tab !== "chat" && (
       <div className="bg-[#F4F1DE] border-t-2 border-[#4A3B32] px-3 py-3">
         {tab === "reminders" ? (
           <form onSubmit={submitReminder} className="flex items-center gap-2">
@@ -247,6 +267,7 @@ export default function NotesPanel({
           try &quot;review pr in 2 hours&quot; · &quot;call priya at 5pm&quot;
         </p>
       </div>
+      )}
     </div>
   );
 }

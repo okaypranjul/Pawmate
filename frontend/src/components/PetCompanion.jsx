@@ -6,7 +6,12 @@ import NotesPanel from "./NotesPanel";
 import NameModal from "./NameModal";
 import { getDeviceId } from "../lib/device";
 import api from "../lib/api";
-import { ensureNotificationPermission, sendBrowserNotification } from "../lib/notifications";
+import {
+  ensureNotificationPermission,
+  sendBrowserNotification,
+  registerServiceWorker,
+} from "../lib/notifications";
+import ui from "../lib/uiSounds";
 import { toast } from "sonner";
 
 const HOME_RIGHT = 24; // px from right edge
@@ -26,7 +31,7 @@ function randBetween(a, b) {
   return a + Math.random() * (b - a);
 }
 
-export default function PetCompanion() {
+export default function PetCompanion({ focusRunning, sessionMessage }) {
   const deviceId = useMemo(() => getDeviceId(), []);
   const [pet, setPet] = useState(null);
   const [showName, setShowName] = useState(false);
@@ -35,16 +40,19 @@ export default function PetCompanion() {
   const [reminders, setReminders] = useState([]);
   const [bubble, setBubble] = useState(null); // {message, key}
   const [facing, setFacing] = useState("right");
-  const [petState, setPetState] = useState("idle"); // idle | walk | hop
+  const [petState, setPetState] = useState("idle"); // idle | walk | hop | focused
   const usedLinesRef = useRef([]); // avoid repeating nudge lines in session
   const bubbleTimerRef = useRef(null);
   const wanderTimerRef = useRef(null);
   const dragStartRef = useRef(null);
+  const focusRunningRef = useRef(focusRunning);
 
   const controls = useAnimationControls();
 
   // ---------- Load ----------
   useEffect(() => {
+    // register SW for background notifications
+    registerServiceWorker();
     let mounted = true;
     (async () => {
       try {
@@ -103,8 +111,10 @@ export default function PetCompanion() {
     if (!message) return;
     if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
     setBubble({ message, key: Date.now() + Math.random() });
-    setPetState("hop");
-    setTimeout(() => setPetState("idle"), 600);
+    if (!focusRunningRef.current) {
+      setPetState("hop");
+      setTimeout(() => setPetState(focusRunningRef.current ? "focused" : "idle"), 600);
+    }
     bubbleTimerRef.current = setTimeout(() => setBubble(null), BUBBLE_AUTO_MS);
   }, []);
 
@@ -131,7 +141,8 @@ export default function PetCompanion() {
         // show messages one-by-one
         for (const d of due) {
           queueBubble(d.message || `Reminder: ${d.content}`);
-          sendBrowserNotification(`${pet.name} 🐾`, d.message || d.content);
+          ui.reminder();
+          sendBrowserNotification(`${pet.name} 🐾`, d.message || d.content, `reminder-${d.id}`);
           usedLinesRef.current.push(d.message);
           // brief stagger so multiple due reminders don't overwrite each other instantly
           await new Promise((r) => setTimeout(r, 1200));
@@ -196,14 +207,38 @@ export default function PetCompanion() {
     bubbleRef.current = bubble;
   }, [bubble]);
 
+  // ---------- Focus state syncing ----------
+  useEffect(() => {
+    focusRunningRef.current = focusRunning;
+    if (focusRunning) {
+      setPetState("focused");
+    } else {
+      setPetState("idle");
+    }
+  }, [focusRunning]);
+
+  // When a focus session completes, show the message
+  useEffect(() => {
+    if (!sessionMessage) return;
+    if (sessionMessage.text) {
+      queueBubble(sessionMessage.text);
+      ui.complete();
+      if (pet) {
+        sendBrowserNotification(`${pet.name} 🐾`, sessionMessage.text, `session-${Date.now()}`);
+      }
+      usedLinesRef.current.push(sessionMessage.text);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionMessage]);
+
   // ---------- Wander ----------
   useEffect(() => {
     if (!pet) return;
     let cancelled = false;
     const wander = async () => {
       if (cancelled) return;
-      // skip if panel open or bubble currently showing
-      if (panelOpenRef.current || bubbleRef.current) {
+      // skip if panel open, bubble showing, OR focus session running
+      if (panelOpenRef.current || bubbleRef.current || focusRunningRef.current) {
         wanderTimerRef.current = setTimeout(wander, randBetween(WANDER_MIN_MS, WANDER_MAX_MS));
         return;
       }
@@ -260,15 +295,19 @@ export default function PetCompanion() {
   // ---------- Click ----------
   const handlePetClick = () => {
     if (!pet) return;
+    ui.pet();
     setPanelOpen((v) => !v);
-    setPetState("hop");
-    setTimeout(() => setPetState("idle"), 600);
+    if (!focusRunningRef.current) {
+      setPetState("hop");
+      setTimeout(() => setPetState(focusRunningRef.current ? "focused" : "idle"), 600);
+    }
   };
 
   // ---------- CRUD passthroughs ----------
   const addNote = async (text) => {
     const created = await api.createNote(deviceId, text);
     setNotes((prev) => [created, ...prev]);
+    ui.click();
     queueBubble("got it — tucked into the desk drawer.");
   };
   const addReminder = async (text) => {
@@ -277,6 +316,7 @@ export default function PetCompanion() {
     setReminders((prev) =>
       [...prev, created].sort((a, b) => a.trigger_at.localeCompare(b.trigger_at))
     );
+    ui.click();
     queueBubble(`okay! i'll remind you about "${created.content}" 🐾`);
   };
   const deleteNote = async (id) => {
@@ -286,6 +326,10 @@ export default function PetCompanion() {
   const deleteReminder = async (id) => {
     await api.deleteReminder(id);
     setReminders((prev) => prev.filter((r) => r.id !== id));
+  };
+  const chatWithPet = async (message, history) => {
+    const res = await api.chat(deviceId, message, history);
+    return res.reply;
   };
 
   // ---------- Render ----------
@@ -347,6 +391,7 @@ export default function PetCompanion() {
           <NotesPanel
             open={panelOpen}
             petName={pet.name}
+            deviceId={deviceId}
             notes={notes}
             reminders={reminders}
             onClose={() => setPanelOpen(false)}
@@ -354,6 +399,7 @@ export default function PetCompanion() {
             onAddReminder={addReminder}
             onDeleteNote={deleteNote}
             onDeleteReminder={deleteReminder}
+            onChat={chatWithPet}
           />
         </div>
       )}

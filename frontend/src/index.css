@@ -97,6 +97,10 @@ body {
     75% { transform: translateY(-8px); }
     100% { transform: translateY(0); }
 }
+@keyframes cat-focus {
+    0%, 100% { transform: translateY(0); filter: drop-shadow(0 0 0 rgba(129, 178, 154, 0)); }
+    50% { transform: translateY(-1px); filter: drop-shadow(0 0 6px rgba(129, 178, 154, 0.6)); }
+}
 @keyframes tail-sway {
     0%, 100% { transform: rotate(-3deg); }
     50% { transform: rotate(3deg); }
@@ -114,6 +118,7 @@ body {
 .anim-bob { animation: cat-bob 2.4s ease-in-out infinite; }
 .anim-walk { animation: cat-walk 0.42s ease-in-out infinite; }
 .anim-hop { animation: cat-hop 0.6s ease-out 1; }
+.anim-focus { animation: cat-focus 4.5s ease-in-out infinite; }
 .anim-bubble-pop { animation: bubble-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 
 /* Speech bubble tail */

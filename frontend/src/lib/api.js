@@ -31,6 +31,29 @@ export const api = {
 
   nudge: (deviceId, usedLines) =>
     http.post("/nudge", { device_id: deviceId, used_lines: usedLines }).then((r) => r.data),
+
+  chat: (deviceId, message, history) =>
+    http.post("/chat", { device_id: deviceId, message, history }).then((r) => r.data),
+
+  getPrefs: (deviceId) =>
+    http.get("/prefs", { params: { device_id: deviceId } }).then((r) => r.data),
+  saveSoundPrefs: (deviceId, masterVolume, muted, sounds) =>
+    http
+      .post("/prefs/sounds", {
+        device_id: deviceId,
+        master_volume: masterVolume,
+        muted,
+        sounds,
+      })
+      .then((r) => r.data),
+  recordSession: (deviceId, sessionType, durationMinutes) =>
+    http
+      .post("/prefs/sessions", {
+        device_id: deviceId,
+        session_type: sessionType,
+        duration_minutes: durationMinutes,
+      })
+      .then((r) => r.data),
 };
 
 export default api;
