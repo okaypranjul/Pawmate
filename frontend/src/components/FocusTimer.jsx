@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Play, Pause, RotateCcw, Timer, Coffee, Sparkles } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Play, Pause, RotateCcw, Timer, Coffee, Sparkles, ChevronDown } from "lucide-react";
 import api from "../lib/api";
 import { getDeviceId } from "../lib/device";
 import ui from "../lib/uiSounds";
@@ -19,7 +20,7 @@ function fmt(s) {
 
 export default function FocusTimer({ onRunningChange, onSessionComplete }) {
   const deviceId = useRef(getDeviceId()).current;
-  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [sessionKey, setSessionKey] = useState("deep");
   const [remaining, setRemaining] = useState(SESSIONS.deep.minutes * 60);
   const [running, setRunning] = useState(false);
@@ -35,17 +36,15 @@ export default function FocusTimer({ onRunningChange, onSessionComplete }) {
     onCompleteRef.current = onSessionComplete;
   }, [onSessionComplete]);
 
-  // Load today count
   useEffect(() => {
     api
       .getPrefs(deviceId)
       .then((p) => setToday(p.today_sessions || 0))
-      .catch(() => {});
+      .catch((e) => console.warn("focus: load prefs failed", e));
   }, [deviceId]);
 
-  // notify parent when running changes
   useEffect(() => {
-    onRunningChangeRef.current && onRunningChangeRef.current(running);
+    if (onRunningChangeRef.current) onRunningChangeRef.current(running);
   }, [running]);
 
   const pickSession = (key) => {
@@ -95,26 +94,26 @@ export default function FocusTimer({ onRunningChange, onSessionComplete }) {
 
   const handleComplete = async () => {
     setRunning(false);
-    // Play the unified ~4s cat meow alert (respects global mute, ducks ambient).
-    engine.playMeowAlert().catch(() => {});
+    engine.playMeowAlert().catch((e) => console.warn("meow alert failed:", e));
     try {
-      const res = await api.recordSession(deviceId, sessionKey, SESSIONS[sessionKey].minutes);
+      const res = await api.recordSession(
+        deviceId,
+        sessionKey,
+        SESSIONS[sessionKey].minutes
+      );
       if (typeof res.today_sessions === "number") setToday(res.today_sessions);
-      if (res.message && onCompleteRef.current) {
-        onCompleteRef.current(res.message, sessionKey);
-      } else if (onCompleteRef.current) {
-        onCompleteRef.current(null, sessionKey);
+      if (onCompleteRef.current) {
+        onCompleteRef.current(res.message || null, sessionKey);
       }
-    } catch (_) {
+    } catch (e) {
+      console.warn("recordSession failed:", e);
       if (onCompleteRef.current) onCompleteRef.current(null, sessionKey);
     }
-    // auto-suggest next session
     const next = sessionKey === "break" ? "deep" : "break";
     setSessionKey(next);
     setRemaining(SESSIONS[next].minutes * 60);
   };
 
-  // cleanup on unmount
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -126,127 +125,146 @@ export default function FocusTimer({ onRunningChange, onSessionComplete }) {
   const pct = ((total - remaining) / total) * 100;
 
   return (
-    <>
+    <section
+      data-testid="focus-panel"
+      className="bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-2xl shadow-cozy-lg overflow-hidden"
+    >
+      {/* Header / toggle button */}
       <button
         data-testid="focus-toggle"
         onClick={() => {
-          setOpen((v) => !v);
+          setExpanded((v) => !v);
           ui.open();
         }}
-        aria-label={open ? "close focus timer" : "open focus timer"}
-        className="fixed left-0 top-1/2 -translate-y-1/2 z-[90] bg-[#81B29A] border-2 border-l-0 border-[#4A3B32] rounded-r-lg shadow-cozy-sm px-2 py-3 hover:translate-x-[2px] transition-transform"
-        style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+        aria-expanded={expanded}
+        className="w-full flex items-center gap-3 px-5 py-4 bg-[#81B29A] hover:bg-[#74a78f] border-b-2 border-[#4A3B32] text-left transition-colors"
       >
-        <span className="font-pixel text-base text-[#FDFBF7] flex items-center gap-1">
-          <Timer size={14} />
-          focus
-        </span>
+        <div className="w-12 h-12 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm shrink-0">
+          <Timer size={20} className="text-[#4A3B32]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-pixel text-2xl text-[#FDFBF7] leading-none">focus</div>
+          <div className="text-xs text-[#FDFBF7]/90 mt-1">
+            {running ? (
+              <span data-testid="focus-status">
+                running · <span className="font-pixel text-sm">{fmt(remaining)}</span>
+              </span>
+            ) : (
+              <>
+                <span data-testid="today-sessions" className="font-pixel text-sm">
+                  {today}
+                </span>{" "}
+                {today === 1 ? "session" : "sessions"} today
+              </>
+            )}
+          </div>
+        </div>
+        <motion.span
+          animate={{ rotate: expanded ? 180 : 0 }}
+          transition={{ duration: 0.25 }}
+          className="w-9 h-9 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm"
+        >
+          <ChevronDown size={16} className="text-[#4A3B32]" />
+        </motion.span>
       </button>
 
-      <aside
-        data-testid="focus-panel"
-        className={`fixed left-0 top-0 bottom-0 z-[91] w-[300px] sm:w-[320px] bg-[#FDFBF7] border-r-4 border-[#4A3B32] shadow-[8px_0_0_#4A3B32] transition-transform duration-300 ease-out ${
-          open ? "translate-x-0" : "-translate-x-full"
-        } flex flex-col`}
-      >
-        <div className="bg-[#81B29A] border-b-2 border-[#4A3B32] px-4 py-3 flex items-center justify-between">
-          <div>
-            <h3 className="font-pixel text-2xl text-[#FDFBF7] leading-none">focus timer</h3>
-            <p className="text-xs text-[#FDFBF7]/90 mt-1">
-              <span data-testid="today-sessions" className="font-pixel text-sm">
-                {today}
-              </span>{" "}
-              focus session{today === 1 ? "" : "s"} today
-            </p>
-          </div>
-          <button
-            data-testid="close-focus"
-            onClick={() => setOpen(false)}
-            aria-label="close"
-            className="w-9 h-9 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform rotate-180"
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="focus-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.28, ease: "easeInOut" }}
+            style={{ overflow: "hidden" }}
           >
-            <Timer size={16} className="text-[#4A3B32] -rotate-180" />
-          </button>
-        </div>
+            <div className="px-5 py-5">
+              {/* session type picker */}
+              <div className="grid grid-cols-3 gap-2 mb-5">
+                {Object.entries(SESSIONS).map(([key, s]) => {
+                  const Icon = s.icon;
+                  const active = key === sessionKey;
+                  return (
+                    <button
+                      key={key}
+                      data-testid={`session-${key}`}
+                      onClick={() => pickSession(key)}
+                      disabled={running}
+                      className={`border-2 border-[#4A3B32] rounded-lg p-2 text-xs font-bold transition-transform disabled:opacity-60 disabled:cursor-not-allowed ${
+                        active ? "shadow-cozy-sm" : "bg-[#FDFBF7]"
+                      }`}
+                      style={{
+                        background: active ? s.accent : undefined,
+                        color: active ? "#FDFBF7" : "#4A3B32",
+                      }}
+                    >
+                      <Icon size={14} className="mx-auto mb-1" />
+                      <div>{s.label}</div>
+                      <div className="font-pixel text-sm mt-0.5">{s.minutes}m</div>
+                    </button>
+                  );
+                })}
+              </div>
 
-        <div className="px-4 py-5 flex-1 overflow-y-auto cozy-scroll">
-          {/* session type picker */}
-          <div className="grid grid-cols-3 gap-2 mb-5">
-            {Object.entries(SESSIONS).map(([key, s]) => {
-              const Icon = s.icon;
-              const active = key === sessionKey;
-              return (
-                <button
-                  key={key}
-                  data-testid={`session-${key}`}
-                  onClick={() => pickSession(key)}
-                  disabled={running}
-                  className={`border-2 border-[#4A3B32] rounded-lg p-2 text-xs font-bold transition-transform disabled:opacity-60 disabled:cursor-not-allowed ${
-                    active ? "shadow-cozy-sm" : "bg-[#FDFBF7]"
-                  }`}
-                  style={{ background: active ? s.accent : undefined, color: active ? "#FDFBF7" : "#4A3B32" }}
-                >
-                  <Icon size={14} className="mx-auto mb-1" />
-                  <div>{s.label}</div>
-                  <div className="font-pixel text-sm mt-0.5">{s.minutes}m</div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* big countdown */}
-          <div
-            data-testid="timer-display"
-            className="relative bg-[#F4F1DE] border-2 border-[#4A3B32] rounded-xl p-6 text-center shadow-cozy-sm"
-          >
-            <div className="font-pixel text-[68px] sm:text-[80px] leading-none text-[#4A3B32]">
-              {fmt(remaining)}
-            </div>
-            <div className="font-pixel text-base text-[#8A7968] mt-1 uppercase tracking-wider">
-              {meta.label}
-            </div>
-            <div className="mt-4 h-3 bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-full overflow-hidden">
+              {/* countdown */}
               <div
-                className="h-full transition-[width] duration-700 ease-out"
-                style={{ width: `${pct}%`, background: meta.accent }}
-              />
+                data-testid="timer-display"
+                className="relative bg-[#F4F1DE] border-2 border-[#4A3B32] rounded-xl p-6 text-center shadow-cozy-sm"
+              >
+                <div className="font-pixel text-[68px] sm:text-[80px] leading-none text-[#4A3B32]">
+                  {fmt(remaining)}
+                </div>
+                <div className="font-pixel text-base text-[#8A7968] mt-1 uppercase tracking-wider">
+                  {meta.label}
+                </div>
+                <div className="mt-4 h-3 bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-full overflow-hidden">
+                  <div
+                    className="h-full transition-[width] duration-700 ease-out"
+                    style={{ width: `${pct}%`, background: meta.accent }}
+                  />
+                </div>
+              </div>
+
+              {/* controls */}
+              <div className="flex items-center gap-2 mt-5">
+                {running ? (
+                  <button
+                    data-testid="pause-btn"
+                    onClick={pause}
+                    className="flex-1 inline-flex items-center justify-center gap-2 bg-[#F2CC8F] text-[#4A3B32] font-bold border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm py-3 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
+                  >
+                    <Pause size={16} /> pause
+                  </button>
+                ) : (
+                  <button
+                    data-testid="start-btn"
+                    onClick={start}
+                    className="flex-1 inline-flex items-center justify-center gap-2 bg-[#E07A5F] text-[#FDFBF7] font-bold border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm py-3 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
+                  >
+                    <Play size={16} /> start
+                  </button>
+                )}
+                <button
+                  data-testid="reset-btn"
+                  onClick={reset}
+                  aria-label="reset"
+                  className="w-12 h-12 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
+                >
+                  <RotateCcw size={16} className="text-[#4A3B32]" />
+                </button>
+              </div>
+
+              <p className="font-pixel text-xs text-[#8A7968] mt-5 text-center tracking-wider leading-relaxed">
+                next up:{" "}
+                <span className="text-[#4A3B32]">
+                  {sessionKey === "break" ? "deep work" : "break"}
+                </span>{" "}
+                · auto-cycles work → break
+              </p>
             </div>
-          </div>
-
-          {/* controls */}
-          <div className="flex items-center gap-2 mt-5">
-            {running ? (
-              <button
-                data-testid="pause-btn"
-                onClick={pause}
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-[#F2CC8F] text-[#4A3B32] font-bold border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm py-3 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
-              >
-                <Pause size={16} /> pause
-              </button>
-            ) : (
-              <button
-                data-testid="start-btn"
-                onClick={start}
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-[#E07A5F] text-[#FDFBF7] font-bold border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm py-3 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
-              >
-                <Play size={16} /> start
-              </button>
-            )}
-            <button
-              data-testid="reset-btn"
-              onClick={reset}
-              aria-label="reset"
-              className="w-12 h-12 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
-            >
-              <RotateCcw size={16} className="text-[#4A3B32]" />
-            </button>
-          </div>
-
-          <p className="font-pixel text-xs text-[#8A7968] mt-5 text-center tracking-wider leading-relaxed">
-            next up: <span className="text-[#4A3B32]">{sessionKey === "break" ? "deep work" : "break"}</span> · auto-cycles work → break
-          </p>
-        </div>
-      </aside>
-    </>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
   );
 }

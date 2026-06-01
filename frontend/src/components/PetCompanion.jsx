@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, useAnimationControls } from "framer-motion";
+import { animate, motion, useMotionValue } from "framer-motion";
 import { toast } from "sonner";
 import CatSprite from "./CatSprite";
 import SpeechBubble from "./SpeechBubble";
@@ -13,9 +13,10 @@ import {
   registerServiceWorker,
 } from "../lib/notifications";
 import ui from "../lib/uiSounds";
+import { engine } from "../lib/audio";
 import useBubble from "../hooks/useBubble";
 import useDueReminders from "../hooks/useDueReminders";
-import useWander from "../hooks/useWander";
+import useStroll from "../hooks/useStroll";
 
 const HOME_RIGHT = 24;
 const HOME_TOP = 10;
@@ -24,6 +25,7 @@ const SPRITE_SIZE = 84;
 const HEARTBEAT_MS = 60 * 1000;
 const NUDGE_MIN_MS = 20 * 60 * 1000;
 const NUDGE_MAX_MS = 30 * 60 * 1000;
+const HOP_DURATION_MS = 700;
 
 function randBetween(a, b) {
   return a + Math.random() * (b - a);
@@ -36,30 +38,31 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [notes, setNotes] = useState([]);
   const [reminders, setReminders] = useState([]);
-  const [facing, setFacing] = useState("right");
-  const [petState, setPetState] = useState("idle"); // idle | walk | hop | focused
+  const [facing, setFacing] = useState("left");
+  const [petState, setPetState] = useState("walk");
 
   const usedLinesRef = useRef([]);
   const dragStartRef = useRef(null);
   const focusRunningRef = useRef(focusRunning);
   const panelOpenRef = useRef(false);
   const bubbleRef = useRef(null);
+  const pausedRef = useRef(false);
+  const x = useMotionValue(0);
 
-  const controls = useAnimationControls();
-
-  // ---------- Bubble (hook) ----------
+  // ---------- Bubble ----------
   const triggerHop = useCallback(() => {
-    if (focusRunningRef.current) return;
+    // Pause walking briefly, do the hop, then resume.
+    pausedRef.current = true;
     setPetState("hop");
-    setTimeout(
-      () => setPetState(focusRunningRef.current ? "focused" : "idle"),
-      600
-    );
+    setTimeout(() => {
+      setPetState("walk");
+      if (!panelOpenRef.current) pausedRef.current = false;
+    }, HOP_DURATION_MS);
   }, []);
 
   const { bubble, queueBubble, dismissBubble } = useBubble({ onQueue: triggerHop });
 
-  // keep refs in sync with state for cross-effect reads (wander, nudge)
+  // keep refs synced
   useEffect(() => {
     panelOpenRef.current = panelOpen;
   }, [panelOpen]);
@@ -68,10 +71,9 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
   }, [bubble]);
   useEffect(() => {
     focusRunningRef.current = focusRunning;
-    setPetState(focusRunning ? "focused" : "idle");
   }, [focusRunning]);
 
-  // ---------- Load pet on mount ----------
+  // ---------- Initial pet load ----------
   const refreshLists = useCallback(async () => {
     try {
       const [n, r] = await Promise.all([
@@ -116,7 +118,9 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
       setShowName(false);
       const perm = await ensureNotificationPermission();
       if (perm === "granted") {
-        toast.success("notifications enabled — i'll let you know when reminders are due 🐾");
+        toast.success(
+          "notifications enabled — i'll let you know when reminders are due 🐾"
+        );
       }
       queueBubble(`hi! i'm ${name}. tap me anytime to jot a note or a reminder.`);
       await refreshLists();
@@ -126,13 +130,25 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
     }
   };
 
-  // ---------- Due-reminder polling (hook) ----------
+  // ---------- Walk loop ----------
+  const stroll = useStroll({
+    pet,
+    x,
+    pausedRef,
+    setFacing,
+    setPetState,
+    spriteSize: SPRITE_SIZE,
+  });
+
+  // ---------- Due reminders + meow ----------
   useDueReminders({
     pet,
     deviceId,
     queueBubble,
     onFired: (d) => {
-      setReminders((prev) => prev.map((r) => (r.id === d.id ? { ...r, fired: true } : r)));
+      setReminders((prev) =>
+        prev.map((r) => (r.id === d.id ? { ...r, fired: true } : r))
+      );
       usedLinesRef.current.push(d.message);
     },
   });
@@ -176,7 +192,7 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
     };
   }, [pet, deviceId, queueBubble]);
 
-  // ---------- Focus session completion bubble (meow already fired in FocusTimer) ----------
+  // ---------- Focus session completion ----------
   useEffect(() => {
     if (!sessionMessage || !sessionMessage.text) return;
     queueBubble(sessionMessage.text);
@@ -190,25 +206,14 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
     usedLinesRef.current.push(sessionMessage.text);
   }, [sessionMessage, pet, queueBubble]);
 
-  // ---------- Wander (hook) ----------
-  useWander({
-    pet,
-    controls,
-    panelOpenRef,
-    bubbleRef,
-    focusRunningRef,
-    setPetState,
-    setFacing,
-  });
-
-  // ---------- Drag handlers ----------
+  // ---------- Click vs Drag ----------
   const onDragStart = (_e, info) => {
     dragStartRef.current = { x: info.point.x, y: info.point.y, t: Date.now() };
-    setPetState("walk");
+    stroll.pause();
+    setPetState("idle");
   };
 
   const onDragEnd = (_e, info) => {
-    setPetState(focusRunningRef.current ? "focused" : "idle");
     const start = dragStartRef.current;
     const dx = info.point.x - (start?.x ?? info.point.x);
     const dy = info.point.y - (start?.y ?? info.point.y);
@@ -216,27 +221,32 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
     const isClick = Math.abs(dx) < 5 && Math.abs(dy) < 5 && dt < 250;
     if (isClick) {
       handlePetClick();
-    } else {
-      controls.start({
-        x: 0,
-        y: 0,
-        transition: { type: "spring", stiffness: 120, damping: 14 },
-      });
+      return;
     }
+    // resume walking from wherever the cat was dropped
+    setPetState("walk");
+    if (!panelOpenRef.current) stroll.resume();
   };
 
-  // ---------- Click ----------
-  const handlePetClick = () => {
+  const handlePetClick = async () => {
     if (!pet) return;
     ui.pet();
-    setPanelOpen((v) => !v);
-    if (!focusRunningRef.current) {
-      setPetState("hop");
-      setTimeout(
-        () => setPetState(focusRunningRef.current ? "focused" : "idle"),
-        600
-      );
+    if (panelOpenRef.current) {
+      // close — resume walking
+      setPanelOpen(false);
+      stroll.resume();
+      return;
     }
+    // open — pause + come home for the chat
+    stroll.pause();
+    setPetState("idle");
+    setFacing("right");
+    try {
+      await animate(x, 0, { duration: 0.35, ease: "easeOut" });
+    } catch (e) {
+      // animation interrupted is OK
+    }
+    setPanelOpen(true);
   };
 
   // ---------- CRUD passthroughs ----------
@@ -255,7 +265,9 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
       const localIso = new Date().toISOString();
       const created = await api.createReminder(deviceId, text, localIso);
       setReminders((prev) =>
-        [...prev, created].sort((a, b) => a.trigger_at.localeCompare(b.trigger_at))
+        [...prev, created].sort((a, b) =>
+          a.trigger_at.localeCompare(b.trigger_at)
+        )
       );
       ui.click();
       queueBubble(`okay! i'll remind you about "${created.content}" 🐾`);
@@ -282,67 +294,84 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
       <NameModal open={showName} onSubmit={handleName} />
 
       {pet && (
-        <div
-          data-testid="pet-anchor"
-          className="fixed z-[100] pointer-events-none"
-          style={{ top: HOME_TOP, right: HOME_RIGHT }}
-        >
+        <>
+          {/* The strolling cat */}
           <motion.div
-            data-testid="pet-character"
-            animate={controls}
-            drag
-            dragMomentum={false}
-            dragElastic={0.25}
-            onDragStart={onDragStart}
-            onDragEnd={onDragEnd}
-            onClick={handlePetClick}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.97 }}
-            className="pointer-events-auto cursor-grab active:cursor-grabbing relative"
-            style={{ width: SPRITE_SIZE, height: SPRITE_SIZE }}
-            aria-label={`Open ${pet.name}'s notes`}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handlePetClick();
-              }
-            }}
+            data-testid="pet-anchor"
+            className="fixed z-[100] pointer-events-none"
+            style={{ top: HOME_TOP, right: HOME_RIGHT, x }}
           >
-            <CatSprite state={petState} facing={facing} size={SPRITE_SIZE} />
+            <motion.div
+              data-testid="pet-character"
+              drag
+              dragMomentum={false}
+              dragElastic={0.2}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+              onClick={handlePetClick}
+              whileHover={{ scale: 1.06 }}
+              whileTap={{ scale: 0.95 }}
+              className="pointer-events-auto cursor-grab active:cursor-grabbing relative"
+              style={{
+                width: SPRITE_SIZE,
+                height: SPRITE_SIZE,
+                filter: focusRunning
+                  ? "drop-shadow(0 0 8px rgba(129, 178, 154, 0.55))"
+                  : undefined,
+              }}
+              aria-label={`Open ${pet.name}'s notes`}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handlePetClick();
+                }
+              }}
+            >
+              <CatSprite state={petState} facing={facing} size={SPRITE_SIZE} />
+            </motion.div>
           </motion.div>
-        </div>
-      )}
 
-      {pet && bubble && (
-        <div
-          className="fixed z-[101] pointer-events-auto"
-          style={{ top: HOME_TOP + SPRITE_SIZE + 8, right: HOME_RIGHT }}
-        >
-          <SpeechBubble message={bubble.message} onDismiss={dismissBubble} />
-        </div>
-      )}
+          {/* Speech bubble — follows the cat's x position */}
+          {bubble && (
+            <motion.div
+              className="fixed z-[101] pointer-events-auto"
+              style={{
+                top: HOME_TOP + SPRITE_SIZE + 8,
+                right: HOME_RIGHT,
+                x,
+              }}
+            >
+              <SpeechBubble message={bubble.message} onDismiss={dismissBubble} />
+            </motion.div>
+          )}
 
-      {pet && panelOpen && (
-        <div
-          className="fixed z-[102] pointer-events-auto"
-          style={{ top: HOME_TOP + SPRITE_SIZE + 8, right: HOME_RIGHT }}
-        >
-          <NotesPanel
-            open={panelOpen}
-            petName={pet.name}
-            deviceId={deviceId}
-            notes={notes}
-            reminders={reminders}
-            onClose={() => setPanelOpen(false)}
-            onAddNote={addNote}
-            onAddReminder={addReminder}
-            onDeleteNote={deleteNote}
-            onDeleteReminder={deleteReminder}
-            onChat={chatWithPet}
-          />
-        </div>
+          {/* Notes panel — anchored at home (cat is paused at x=0 when this is open) */}
+          {panelOpen && (
+            <div
+              className="fixed z-[102] pointer-events-auto"
+              style={{ top: HOME_TOP + SPRITE_SIZE + 8, right: HOME_RIGHT }}
+            >
+              <NotesPanel
+                open={panelOpen}
+                petName={pet.name}
+                deviceId={deviceId}
+                notes={notes}
+                reminders={reminders}
+                onClose={() => {
+                  setPanelOpen(false);
+                  stroll.resume();
+                }}
+                onAddNote={addNote}
+                onAddReminder={addReminder}
+                onDeleteNote={deleteNote}
+                onDeleteReminder={deleteReminder}
+                onChat={chatWithPet}
+              />
+            </div>
+          )}
+        </>
       )}
     </>
   );
