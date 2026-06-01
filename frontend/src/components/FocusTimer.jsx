@@ -3,6 +3,7 @@ import { Play, Pause, RotateCcw, Timer, Coffee, Sparkles } from "lucide-react";
 import api from "../lib/api";
 import { getDeviceId } from "../lib/device";
 import ui from "../lib/uiSounds";
+import { engine } from "../lib/audio";
 
 const SESSIONS = {
   deep: { label: "deep work", minutes: 25, icon: Timer, accent: "#E07A5F" },
@@ -94,7 +95,8 @@ export default function FocusTimer({ onRunningChange, onSessionComplete }) {
 
   const handleComplete = async () => {
     setRunning(false);
-    ui.chime();
+    // Play the unified ~4s cat meow alert (respects global mute, ducks ambient).
+    engine.playMeowAlert().catch(() => {});
     try {
       const res = await api.recordSession(deviceId, sessionKey, SESSIONS[sessionKey].minutes);
       if (typeof res.today_sessions === "number") setToday(res.today_sessions);

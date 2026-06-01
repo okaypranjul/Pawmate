@@ -47,6 +47,14 @@ Build a browser-based desktop pet (a friendly pixel-art cat) that lives along th
 - Iteration 1 (2026-02): 17 pytest backend tests + Playwright e2e — 100% pass on both. No critical or minor blockers.
 - Iteration 2 (2026-02): 15 additional pytest backend tests + Playwright e2e (focus timer start/pause/reset, session switch, sound dock toggle/volume/mute/persistence, chat tab user + pet message, PWA manifest reachable, SW registered) — 100% pass on both. No critical issues.
 
+### Iteration 3 — unified cat meow alert (2026-02)
+- **~4s cat meow alert** fires for every timed event: deep-work / flow-state / break end + any user reminder coming due. Single consistent "time's up" signal across the whole app.
+- 3 short CC-style meow samples (Mixkit License — free for commercial use, no attribution required) chained with small gaps to fill ~3.6–4s, randomized per chain link for natural variation. Files: `/public/sounds/meow.mp3`, `meow_alt.mp3`, `meow_attention.mp3`.
+- Audio bus refactor: separate `alertGain` (always at full when not muted) routed through a shared `muteGate` so the meow is **noticeably louder than ambient loops** while still fully respecting the global mute.
+- **Ducking**: while the meow plays, the ambient master gain ramps down to ~25% (0.2s ramp), then restores to the user's level (0.5s ramp) after the meow finishes.
+- Synced with the pet's happy-hop animation: the bubble (which triggers the hop via `queueBubble`) and the meow fire in the same code path so the sound and visual land together.
+- Replaces the previous procedural `ui.chime` (session complete) and `ui.reminder` (reminder due) tones.
+
 ## Backlog (P1/P2 — for future iterations)
 - P1: Recurring reminders ("every day at 9am")
 - P1: Edit existing reminder/note inline

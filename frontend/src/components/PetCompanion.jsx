@@ -12,6 +12,7 @@ import {
   registerServiceWorker,
 } from "../lib/notifications";
 import ui from "../lib/uiSounds";
+import { engine } from "../lib/audio";
 import { toast } from "sonner";
 
 const HOME_RIGHT = 24; // px from right edge
@@ -141,7 +142,8 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
         // show messages one-by-one
         for (const d of due) {
           queueBubble(d.message || `Reminder: ${d.content}`);
-          ui.reminder();
+          // Unified ~4s cat meow alert (ducks ambient, respects mute).
+          engine.playMeowAlert().catch(() => {});
           sendBrowserNotification(`${pet.name} 🐾`, d.message || d.content, `reminder-${d.id}`);
           usedLinesRef.current.push(d.message);
           // brief stagger so multiple due reminders don't overwrite each other instantly
@@ -217,12 +219,11 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
     }
   }, [focusRunning]);
 
-  // When a focus session completes, show the message
+  // When a focus session completes, show the message (meow already fired in FocusTimer)
   useEffect(() => {
     if (!sessionMessage) return;
     if (sessionMessage.text) {
       queueBubble(sessionMessage.text);
-      ui.complete();
       if (pet) {
         sendBrowserNotification(`${pet.name} 🐾`, sessionMessage.text, `session-${Date.now()}`);
       }

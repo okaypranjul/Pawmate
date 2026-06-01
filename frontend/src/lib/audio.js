@@ -21,13 +21,18 @@ const TRACK_META = {
 class AmbientEngine {
   constructor() {
     this.ctx = null;
-    this.masterGain = null;
+    this.masterGain = null; // ambient bus (already scaled by mute via muteGate)
+    this.alertGain = null; // alert bus (also affected by mute)
+    this.muteGate = null; // 0 if muted else 1
     this.tracks = {}; // key -> { gain, nodes: [], started: bool }
-    this.master = 0.7;
+    this.master = 0.7; // user-set ambient master
     this.muted = false;
     this.noiseBuffer = null;
     this.pinkBuffer = null;
     this.brownBuffer = null;
+    this.meowBuffers = []; // decoded AudioBuffers for cat meow chain
+    this.meowLoaded = false;
+    this.duckRestoreTimer = null;
   }
 
   _ensureCtx() {
@@ -35,10 +40,21 @@ class AmbientEngine {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return;
     this.ctx = new Ctx();
+
+    this.muteGate = this.ctx.createGain();
+    this.muteGate.gain.value = this.muted ? 0 : 1;
+    this.muteGate.connect(this.ctx.destination);
+
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = this.muted ? 0 : this.master;
-    this.masterGain.connect(this.ctx.destination);
+    this.masterGain.gain.value = this.master;
+    this.masterGain.connect(this.muteGate);
+
+    this.alertGain = this.ctx.createGain();
+    this.alertGain.gain.value = 1.0; // alerts always at full (only muted by gate)
+    this.alertGain.connect(this.muteGate);
+
     this._buildBuffers();
+    this._loadMeow();
   }
 
   async resume() {
@@ -282,9 +298,7 @@ class AmbientEngine {
     built.out.connect(userGain).connect(this.masterGain);
     this.tracks[key] = { ...built, userGain };
     this._rampGain(userGain.gain, Math.max(0, Math.min(1, volume)), 0.6);
-  }
-
-  disable(key) {
+  }  disable(key) {
     const t = this.tracks[key];
     if (!t) return;
     this._rampGain(t.userGain.gain, 0, 0.4);
@@ -318,6 +332,91 @@ class AmbientEngine {
     } catch (_) {
       param.value = value;
     }
+  }
+
+  async _loadMeow() {
+    if (this.meowLoaded || !this.ctx) return;
+    const urls = ["/sounds/meow.mp3", "/sounds/meow_alt.mp3", "/sounds/meow_attention.mp3"];
+    const buffers = [];
+    for (const url of urls) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const arr = await res.arrayBuffer();
+        const buf = await this.ctx.decodeAudioData(arr);
+        buffers.push(buf);
+      } catch (e) {
+        // skip
+      }
+    }
+    this.meowBuffers = buffers;
+    this.meowLoaded = buffers.length > 0;
+  }
+
+  /**
+   * Play a ~4 second cat meow alert. Chains 2-3 cat meow samples with small gaps.
+   * Ducks ambient down to ~25% while playing, then restores.
+   * Respects global mute (no audible output when muted, but visual hop still fires upstream).
+   */
+  async playMeowAlert() {
+    await this.resume();
+    if (!this.ctx) return 0;
+    if (!this.meowLoaded) await this._loadMeow();
+    if (!this.meowBuffers.length) return 0;
+
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    // Duck ambient master
+    if (this.duckRestoreTimer) {
+      clearTimeout(this.duckRestoreTimer);
+      this.duckRestoreTimer = null;
+    }
+    if (this.masterGain) {
+      const duckedTarget = this.master * 0.25;
+      this.masterGain.gain.cancelScheduledValues(now);
+      this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
+      this.masterGain.gain.linearRampToValueAtTime(duckedTarget, now + 0.2);
+    }
+
+    // Chain 3 meows with gaps to fill ~4s
+    const playAt = (offset) => {
+      const buf = this.meowBuffers[Math.floor(Math.random() * this.meowBuffers.length)];
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const g = ctx.createGain();
+      // make meow slightly more prominent — gain >1 with soft cap via the alert bus
+      g.gain.setValueAtTime(0, now + offset);
+      g.gain.linearRampToValueAtTime(1.1, now + offset + 0.02);
+      g.gain.setValueAtTime(1.1, now + offset + buf.duration - 0.08);
+      g.gain.linearRampToValueAtTime(0, now + offset + buf.duration);
+      src.connect(g).connect(this.alertGain);
+      src.start(now + offset);
+      src.stop(now + offset + buf.duration + 0.05);
+      return buf.duration;
+    };
+
+    let cursor = 0;
+    const targetTotal = 3.6;
+    const gap = 0.35;
+    while (cursor < targetTotal) {
+      const dur = playAt(cursor);
+      cursor += dur + gap;
+    }
+    const totalMs = Math.round(cursor * 1000);
+
+    // Schedule restore of ambient master
+    this.duckRestoreTimer = setTimeout(() => {
+      if (this.masterGain && this.ctx) {
+        const t = this.ctx.currentTime;
+        this.masterGain.gain.cancelScheduledValues(t);
+        this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, t);
+        this.masterGain.gain.linearRampToValueAtTime(this.master, t + 0.5);
+      }
+      this.duckRestoreTimer = null;
+    }, totalMs + 50);
+
+    return totalMs;
   }
 }
 
