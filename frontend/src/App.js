@@ -67,10 +67,11 @@ export default function App() {
         }}
       />
 
-      {/* Top strip — where the cat walks */}
+      {/* Top black strip — the floor the cat walks on */}
       <div
         aria-hidden
-        className="fixed top-0 left-0 right-0 h-[104px] bg-gradient-to-b from-[#F2CC8F]/40 to-transparent pointer-events-none z-[10]"
+        data-testid="top-black-strip"
+        className="fixed top-0 left-0 right-0 h-[100px] bg-black pointer-events-none z-[50]"
       />
 
       <main className="relative z-[20] max-w-5xl mx-auto px-5 sm:px-8 pt-32 pb-24">
