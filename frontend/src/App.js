@@ -43,7 +43,7 @@ export default function App() {
 
   return (
     <div className="App min-h-screen relative bg-[#1F1F1F]">
-      {/* Background image layer — grayscaled to match the monochrome theme */}
+      {/* Background image layer — keeps its original colour */}
       <div
         aria-hidden
         data-testid="bg-layer"
@@ -53,7 +53,6 @@ export default function App() {
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
-          filter: "grayscale(1) brightness(0.55) contrast(1.15)",
           imageRendering: "pixelated",
         }}
       />
@@ -72,11 +71,11 @@ export default function App() {
         }}
       />
 
-      {/* Subtle dark overlay above the grayscaled bg so the cat (and panels) pop */}
+      {/* Soft dark overlay so the monochrome UI stays readable on bright scenes */}
       <div
         aria-hidden
         data-testid="bg-overlay"
-        className="fixed inset-0 pointer-events-none z-[5] bg-gradient-to-b from-black/55 via-black/25 to-black/40"
+        className="fixed inset-0 pointer-events-none z-[5] bg-black/25"
       />
 
       <main className="relative z-[20] max-w-5xl mx-auto px-5 sm:px-8 min-h-screen flex items-center justify-center py-32">
