@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { Bell, StickyNote, Trash2, X, Loader2, Clock, MessageCircle } from "lucide-react";
-import ChatTab from "./ChatTab";
+import { Bell, StickyNote, Trash2, X, Loader2, Clock } from "lucide-react";
 
 function formatTime(iso) {
   try {
@@ -36,7 +35,6 @@ export default function NotesPanel({
   onAddReminder,
   onDeleteNote,
   onDeleteReminder,
-  onChat,
 }) {
   const [tab, setTab] = useState("reminders");
   const [noteText, setNoteText] = useState("");
@@ -124,18 +122,6 @@ export default function NotesPanel({
           notes
           <span className="font-pixel text-base leading-none ml-1">{notes.length}</span>
         </button>
-        <button
-          data-testid="tab-chat"
-          onClick={() => setTab("chat")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-[#0F0F0F] text-sm font-bold transition-transform ${
-            tab === "chat"
-              ? "bg-[#FFE14E] text-[#192853] shadow-cozy-sm"
-              : "bg-[#EFF8FF] text-[#0F0F0F]"
-          }`}
-        >
-          <MessageCircle size={14} />
-          chat
-        </button>
       </div>
 
       {/* Body */}
@@ -216,13 +202,9 @@ export default function NotesPanel({
             ))}
           </ul>
         )}
-        {tab === "chat" && (
-          <ChatTab petName={petName} deviceId={deviceId} onSend={onChat} />
-        )}
       </div>
 
       {/* Footer input */}
-      {tab !== "chat" && (
       <div className="bg-[#EFF8FF] border-t-2 border-[#0F0F0F] px-3 py-3">
         {tab === "reminders" ? (
           <form onSubmit={submitReminder} className="flex items-center gap-2">
@@ -267,7 +249,6 @@ export default function NotesPanel({
           try &quot;review pr in 2 hours&quot; · &quot;call priya at 5pm&quot;
         </p>
       </div>
-      )}
     </div>
   );
 }

@@ -283,10 +283,6 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
     await api.deleteReminder(id);
     setReminders((prev) => prev.filter((r) => r.id !== id));
   };
-  const chatWithPet = async (message, history) => {
-    const res = await api.chat(deviceId, message, history);
-    return res.reply;
-  };
 
   // ---------- Render ----------
   return (
@@ -367,7 +363,6 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
                 onAddReminder={addReminder}
                 onDeleteNote={deleteNote}
                 onDeleteReminder={deleteReminder}
-                onChat={chatWithPet}
               />
             </div>
           )}
