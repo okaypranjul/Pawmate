@@ -79,10 +79,10 @@ export default function NotesPanel({
       {/* Header */}
       <div className="bg-[#5C5C5C] border-b-2 border-[#0F0F0F] px-4 py-3 flex items-center justify-between">
         <div>
-          <h3 className="font-pixel text-2xl text-[#0F0F0F] leading-none">
+          <h3 className="font-pixel text-2xl text-white leading-none">
             {petName}'s desk
           </h3>
-          <p className="text-xs text-[#0F0F0F]/70 mt-1">notes &amp; little reminders</p>
+          <p className="text-xs text-white/80 mt-1">notes &amp; little reminders</p>
         </div>
         <button
           data-testid="close-panel-btn"
