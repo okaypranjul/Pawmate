@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Play, Pause, RotateCcw, Timer, Coffee, Sparkles, ChevronDown } from "lucide-react";
+import { Play, Pause, RotateCcw, Timer, Coffee, Sparkles } from "lucide-react";
 import api from "../lib/api";
 import { getDeviceId } from "../lib/device";
 import ui from "../lib/uiSounds";
@@ -20,7 +19,6 @@ function fmt(s) {
 
 export default function FocusTimer({ onRunningChange, onSessionComplete }) {
   const deviceId = useRef(getDeviceId()).current;
-  const [expanded, setExpanded] = useState(false);
   const [sessionKey, setSessionKey] = useState("deep");
   const [remaining, setRemaining] = useState(SESSIONS.deep.minutes * 60);
   const [running, setRunning] = useState(false);
@@ -129,29 +127,21 @@ export default function FocusTimer({ onRunningChange, onSessionComplete }) {
       data-testid="focus-panel"
       className="bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-2xl shadow-cozy-lg overflow-hidden"
     >
-      {/* Header / toggle button */}
-      <button
-        data-testid="focus-toggle"
-        onClick={() => {
-          setExpanded((v) => !v);
-          ui.open();
-        }}
-        aria-expanded={expanded}
-        className="w-full flex items-center gap-3 px-5 py-4 bg-[#81B29A] hover:bg-[#74a78f] border-b-2 border-[#4A3B32] text-left transition-colors"
-      >
-        <div className="w-12 h-12 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm shrink-0">
-          <Timer size={20} className="text-[#4A3B32]" />
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 bg-[#81B29A] border-b-2 border-[#4A3B32]">
+        <div className="w-10 h-10 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm shrink-0">
+          <Timer size={16} className="text-[#4A3B32]" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-pixel text-2xl text-[#FDFBF7] leading-none">focus</div>
-          <div className="text-xs text-[#FDFBF7]/90 mt-1">
+          <div className="font-pixel text-xl text-[#FDFBF7] leading-none">focus</div>
+          <div className="text-[11px] text-[#FDFBF7]/90 mt-1">
             {running ? (
               <span data-testid="focus-status">
-                running · <span className="font-pixel text-sm">{fmt(remaining)}</span>
+                running · <span className="font-pixel text-xs">{fmt(remaining)}</span>
               </span>
             ) : (
               <>
-                <span data-testid="today-sessions" className="font-pixel text-sm">
+                <span data-testid="today-sessions" className="font-pixel text-xs">
                   {today}
                 </span>{" "}
                 {today === 1 ? "session" : "sessions"} today
@@ -159,112 +149,84 @@ export default function FocusTimer({ onRunningChange, onSessionComplete }) {
             )}
           </div>
         </div>
-        <motion.span
-          animate={{ rotate: expanded ? 180 : 0 }}
-          transition={{ duration: 0.25 }}
-          className="w-9 h-9 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm"
-        >
-          <ChevronDown size={16} className="text-[#4A3B32]" />
-        </motion.span>
-      </button>
+      </div>
 
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            key="focus-body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.28, ease: "easeInOut" }}
-            style={{ overflow: "hidden" }}
-          >
-            <div className="px-5 py-5">
-              {/* session type picker */}
-              <div className="grid grid-cols-3 gap-2 mb-5">
-                {Object.entries(SESSIONS).map(([key, s]) => {
-                  const Icon = s.icon;
-                  const active = key === sessionKey;
-                  return (
-                    <button
-                      key={key}
-                      data-testid={`session-${key}`}
-                      onClick={() => pickSession(key)}
-                      disabled={running}
-                      className={`border-2 border-[#4A3B32] rounded-lg p-2 text-xs font-bold transition-transform disabled:opacity-60 disabled:cursor-not-allowed ${
-                        active ? "shadow-cozy-sm" : "bg-[#FDFBF7]"
-                      }`}
-                      style={{
-                        background: active ? s.accent : undefined,
-                        color: active ? "#FDFBF7" : "#4A3B32",
-                      }}
-                    >
-                      <Icon size={14} className="mx-auto mb-1" />
-                      <div>{s.label}</div>
-                      <div className="font-pixel text-sm mt-0.5">{s.minutes}m</div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* countdown */}
-              <div
-                data-testid="timer-display"
-                className="relative bg-[#F4F1DE] border-2 border-[#4A3B32] rounded-xl p-6 text-center shadow-cozy-sm"
+      <div className="px-4 py-4">
+        {/* session type picker */}
+        <div className="grid grid-cols-3 gap-1.5 mb-4">
+          {Object.entries(SESSIONS).map(([key, s]) => {
+            const Icon = s.icon;
+            const active = key === sessionKey;
+            return (
+              <button
+                key={key}
+                data-testid={`session-${key}`}
+                onClick={() => pickSession(key)}
+                disabled={running}
+                className={`border-2 border-[#4A3B32] rounded-lg p-1.5 text-[11px] font-bold transition-transform disabled:opacity-60 disabled:cursor-not-allowed ${
+                  active ? "shadow-cozy-sm" : "bg-[#FDFBF7]"
+                }`}
+                style={{
+                  background: active ? s.accent : undefined,
+                  color: active ? "#FDFBF7" : "#4A3B32",
+                }}
               >
-                <div className="font-pixel text-[68px] sm:text-[80px] leading-none text-[#4A3B32]">
-                  {fmt(remaining)}
-                </div>
-                <div className="font-pixel text-base text-[#8A7968] mt-1 uppercase tracking-wider">
-                  {meta.label}
-                </div>
-                <div className="mt-4 h-3 bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-full overflow-hidden">
-                  <div
-                    className="h-full transition-[width] duration-700 ease-out"
-                    style={{ width: `${pct}%`, background: meta.accent }}
-                  />
-                </div>
-              </div>
+                <Icon size={12} className="mx-auto mb-0.5" />
+                <div className="leading-tight">{s.label}</div>
+                <div className="font-pixel text-[11px] mt-0.5">{s.minutes}m</div>
+              </button>
+            );
+          })}
+        </div>
 
-              {/* controls */}
-              <div className="flex items-center gap-2 mt-5">
-                {running ? (
-                  <button
-                    data-testid="pause-btn"
-                    onClick={pause}
-                    className="flex-1 inline-flex items-center justify-center gap-2 bg-[#F2CC8F] text-[#4A3B32] font-bold border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm py-3 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
-                  >
-                    <Pause size={16} /> pause
-                  </button>
-                ) : (
-                  <button
-                    data-testid="start-btn"
-                    onClick={start}
-                    className="flex-1 inline-flex items-center justify-center gap-2 bg-[#E07A5F] text-[#FDFBF7] font-bold border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm py-3 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
-                  >
-                    <Play size={16} /> start
-                  </button>
-                )}
-                <button
-                  data-testid="reset-btn"
-                  onClick={reset}
-                  aria-label="reset"
-                  className="w-12 h-12 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
-                >
-                  <RotateCcw size={16} className="text-[#4A3B32]" />
-                </button>
-              </div>
+        {/* countdown */}
+        <div
+          data-testid="timer-display"
+          className="relative bg-[#F4F1DE] border-2 border-[#4A3B32] rounded-xl px-4 py-4 text-center shadow-cozy-sm"
+        >
+          <div className="font-pixel text-[56px] sm:text-[64px] leading-none text-[#4A3B32]">
+            {fmt(remaining)}
+          </div>
+          <div className="font-pixel text-xs text-[#8A7968] mt-1 uppercase tracking-wider">
+            {meta.label}
+          </div>
+          <div className="mt-3 h-2.5 bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-full overflow-hidden">
+            <div
+              className="h-full transition-[width] duration-700 ease-out"
+              style={{ width: `${pct}%`, background: meta.accent }}
+            />
+          </div>
+        </div>
 
-              <p className="font-pixel text-xs text-[#8A7968] mt-5 text-center tracking-wider leading-relaxed">
-                next up:{" "}
-                <span className="text-[#4A3B32]">
-                  {sessionKey === "break" ? "deep work" : "break"}
-                </span>{" "}
-                · auto-cycles work → break
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {/* controls */}
+        <div className="flex items-center gap-2 mt-4">
+          {running ? (
+            <button
+              data-testid="pause-btn"
+              onClick={pause}
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-[#F2CC8F] text-[#4A3B32] font-bold border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm py-2.5 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
+            >
+              <Pause size={14} /> pause
+            </button>
+          ) : (
+            <button
+              data-testid="start-btn"
+              onClick={start}
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-[#E07A5F] text-[#FDFBF7] font-bold border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm py-2.5 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
+            >
+              <Play size={14} /> start
+            </button>
+          )}
+          <button
+            data-testid="reset-btn"
+            onClick={reset}
+            aria-label="reset"
+            className="w-11 h-11 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
+          >
+            <RotateCcw size={14} className="text-[#4A3B32]" />
+          </button>
+        </div>
+      </div>
     </section>
   );
 }

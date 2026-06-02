@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Volume2, VolumeX, Music, ChevronDown } from "lucide-react";
+import { Volume2, VolumeX, Music } from "lucide-react";
 import { engine, TRACK_KEYS, TRACK_META } from "../lib/audio";
 import api from "../lib/api";
 import { getDeviceId } from "../lib/device";
@@ -10,14 +9,11 @@ const TRACK_ICONS = {
   rain: "🌧",
   ocean: "🌊",
   forest: "🌲",
-  cafe: "☕",
-  lofi: "🎧",
   white: "✦",
 };
 
 export default function SoundDock() {
   const deviceId = useRef(getDeviceId()).current;
-  const [expanded, setExpanded] = useState(false);
   const [master, setMaster] = useState(0.7);
   const [muted, setMuted] = useState(false);
   const [tracks, setTracks] = useState(
@@ -105,142 +101,109 @@ export default function SoundDock() {
       data-testid="sound-dock"
       className="bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-2xl shadow-cozy-lg overflow-hidden"
     >
-      <button
-        data-testid="sound-dock-toggle"
-        onClick={() => {
-          setExpanded((v) => !v);
-          ui.open();
-        }}
-        aria-expanded={expanded}
-        className="w-full flex items-center gap-3 px-5 py-4 bg-[#E07A5F] hover:bg-[#d56f54] border-b-2 border-[#4A3B32] text-left transition-colors"
-      >
-        <div className="w-12 h-12 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm shrink-0">
-          <Music size={20} className="text-[#4A3B32]" />
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 bg-[#E07A5F] border-b-2 border-[#4A3B32]">
+        <div className="w-10 h-10 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm shrink-0">
+          <Music size={16} className="text-[#4A3B32]" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-pixel text-2xl text-[#FDFBF7] leading-none">sounds</div>
-          <div className="text-xs text-[#FDFBF7]/90 mt-1">
+          <div className="font-pixel text-xl text-[#FDFBF7] leading-none">sounds</div>
+          <div className="text-[11px] text-[#FDFBF7]/90 mt-1">
             {muted ? (
               <span className="inline-flex items-center gap-1">
-                <VolumeX size={12} /> muted
+                <VolumeX size={11} /> muted
               </span>
             ) : activeCount === 0 ? (
-              <>nothing playing · pick a vibe</>
+              <>pick a vibe</>
             ) : (
               <>
-                <span className="font-pixel text-sm">{activeCount}</span>{" "}
+                <span className="font-pixel text-xs">{activeCount}</span>{" "}
                 {activeCount === 1 ? "layer" : "layers"} playing
               </>
             )}
           </div>
         </div>
-        <motion.span
-          animate={{ rotate: expanded ? 180 : 0 }}
-          transition={{ duration: 0.25 }}
-          className="w-9 h-9 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm"
-        >
-          <ChevronDown size={16} className="text-[#4A3B32]" />
-        </motion.span>
-      </button>
+      </div>
 
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            key="sound-body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.28, ease: "easeInOut" }}
-            style={{ overflow: "hidden" }}
+      {/* Master */}
+      <div className="px-4 py-3 border-b-2 border-dashed border-[#4A3B32]/30 bg-[#F4F1DE]">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="font-pixel text-base text-[#4A3B32]">master</span>
+          <button
+            data-testid="mute-toggle"
+            onClick={toggleMute}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border-2 border-[#4A3B32] text-[11px] font-bold shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform ${
+              muted ? "bg-[#E07A5F] text-[#FDFBF7]" : "bg-[#FDFBF7] text-[#4A3B32]"
+            }`}
           >
-            {/* Master */}
-            <div className="px-5 py-4 border-b-2 border-dashed border-[#4A3B32]/30 bg-[#F4F1DE]">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-pixel text-lg text-[#4A3B32]">master</span>
+            {muted ? <VolumeX size={11} /> : <Volume2 size={11} />}
+            {muted ? "muted" : "live"}
+          </button>
+        </div>
+        <input
+          data-testid="master-volume"
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={master}
+          onChange={(e) => setMasterVol(parseFloat(e.target.value))}
+          className="w-full accent-[#E07A5F]"
+        />
+      </div>
+
+      {/* Tracks — 2x2 grid */}
+      <div className="px-3 py-3 grid grid-cols-2 gap-2">
+        {TRACK_KEYS.map((key) => {
+          const t = tracks[key];
+          const meta = TRACK_META[key];
+          return (
+            <div
+              key={key}
+              data-testid={`track-${key}`}
+              className={`bg-white border-2 border-[#4A3B32] rounded-lg p-2 transition-colors ${
+                t.enabled ? "shadow-cozy-sm" : "opacity-90"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-base" aria-hidden>
+                    {TRACK_ICONS[key]}
+                  </span>
+                  <span className="font-pixel text-sm text-[#4A3B32] truncate">
+                    {meta.label}
+                  </span>
+                </div>
                 <button
-                  data-testid="mute-toggle"
-                  onClick={toggleMute}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border-2 border-[#4A3B32] text-xs font-bold shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform ${
-                    muted ? "bg-[#E07A5F] text-[#FDFBF7]" : "bg-[#FDFBF7] text-[#4A3B32]"
+                  data-testid={`toggle-${key}`}
+                  onClick={() => toggleTrack(key)}
+                  aria-pressed={t.enabled}
+                  className={`shrink-0 w-10 h-6 rounded-full border-2 border-[#4A3B32] relative transition-colors ${
+                    t.enabled ? "bg-[#81B29A]" : "bg-[#F4F1DE]"
                   }`}
                 >
-                  {muted ? <VolumeX size={12} /> : <Volume2 size={12} />}
-                  {muted ? "muted" : "live"}
+                  <span
+                    className={`absolute top-0.5 w-4 h-4 bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-full transition-all ${
+                      t.enabled ? "left-[18px]" : "left-0.5"
+                    }`}
+                  />
                 </button>
               </div>
               <input
-                data-testid="master-volume"
+                data-testid={`volume-${key}`}
                 type="range"
                 min={0}
                 max={1}
                 step={0.01}
-                value={master}
-                onChange={(e) => setMasterVol(parseFloat(e.target.value))}
-                className="w-full accent-[#E07A5F]"
+                value={t.volume}
+                onChange={(e) => setTrackVolume(key, parseFloat(e.target.value))}
+                disabled={!t.enabled}
+                className="w-full mt-1.5 accent-[#E07A5F] disabled:opacity-40"
               />
             </div>
-
-            {/* Tracks */}
-            <div className="px-4 py-4 grid sm:grid-cols-2 gap-2">
-              {TRACK_KEYS.map((key) => {
-                const t = tracks[key];
-                const meta = TRACK_META[key];
-                return (
-                  <div
-                    key={key}
-                    data-testid={`track-${key}`}
-                    className={`bg-white border-2 border-[#4A3B32] rounded-lg p-3 transition-colors ${
-                      t.enabled ? "shadow-cozy-sm" : "opacity-90"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xl" aria-hidden>
-                          {TRACK_ICONS[key]}
-                        </span>
-                        <span className="font-pixel text-base text-[#4A3B32] truncate">
-                          {meta.label}
-                        </span>
-                      </div>
-                      <button
-                        data-testid={`toggle-${key}`}
-                        onClick={() => toggleTrack(key)}
-                        aria-pressed={t.enabled}
-                        className={`shrink-0 w-12 h-7 rounded-full border-2 border-[#4A3B32] relative transition-colors ${
-                          t.enabled ? "bg-[#81B29A]" : "bg-[#F4F1DE]"
-                        }`}
-                      >
-                        <span
-                          className={`absolute top-0.5 w-5 h-5 bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-full transition-all ${
-                            t.enabled ? "left-[22px]" : "left-0.5"
-                          }`}
-                        />
-                      </button>
-                    </div>
-                    <input
-                      data-testid={`volume-${key}`}
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={t.volume}
-                      onChange={(e) => setTrackVolume(key, parseFloat(e.target.value))}
-                      disabled={!t.enabled}
-                      className="w-full mt-2 accent-[#E07A5F] disabled:opacity-40"
-                    />
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="px-5 py-3 border-t-2 border-dashed border-[#4A3B32]/30 bg-[#F4F1DE]">
-              <p className="font-pixel text-xs text-[#8A7968] text-center tracking-wider">
-                all sounds generated locally · no copyrighted audio
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          );
+        })}
+      </div>
     </section>
   );
 }

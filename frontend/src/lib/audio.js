@@ -7,14 +7,12 @@
  * No copyrighted audio is loaded over the network.
  */
 
-const TRACK_KEYS = ["rain", "ocean", "forest", "cafe", "lofi", "white"];
+const TRACK_KEYS = ["rain", "ocean", "forest", "white"];
 
 const TRACK_META = {
   rain: { label: "rain", emoji: "🌧" },
   ocean: { label: "ocean", emoji: "🌊" },
   forest: { label: "forest", emoji: "🌲" },
-  cafe: { label: "café", emoji: "☕" },
-  lofi: { label: "lo-fi hum", emoji: "🎧" },
   white: { label: "white noise", emoji: "✦" },
 };
 
