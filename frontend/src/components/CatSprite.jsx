@@ -18,7 +18,8 @@ export default function CatSprite({ state = "walk", facing = "right", size = 80 
       style={{
         width: size,
         height: size,
-        transform: facing === "left" ? "scaleX(-1)" : undefined,
+        // The GIF's natural orientation is facing LEFT, so we mirror it when walking right.
+        transform: facing === "right" ? "scaleX(-1)" : undefined,
         transformOrigin: "center",
       }}
     >
