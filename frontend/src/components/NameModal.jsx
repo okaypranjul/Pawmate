@@ -26,9 +26,9 @@ export default function NameModal({ open, onSubmit }) {
       <div className="bg-[#FDFBF7] border-4 border-[#4A3B32] rounded-2xl shadow-cozy-lg p-6 max-w-[380px] w-full">
         <div className="flex items-center gap-3 mb-3">
           <img
-            src="https://static.prod-images.emergentagent.com/jobs/ec3808b6-b0af-4f34-8a4a-3ff78eddfdf9/images/0ba86426a286100dc963366cfaaae51f1558d9a882931ee2bda749e8e23c0049.png"
+            src="/sprites/cat.gif"
             alt="cat"
-            className="pixelated w-14 h-14 anim-bob"
+            className="pixelated w-14 h-14"
           />
           <div>
             <h2 className="font-pixel text-3xl text-[#4A3B32] leading-none">a new friend</h2>
