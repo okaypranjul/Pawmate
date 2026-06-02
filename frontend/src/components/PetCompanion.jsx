@@ -262,7 +262,17 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
   };
   const addReminder = async (text) => {
     try {
-      const localIso = new Date().toISOString();
+      // Send the user's actual local time WITH timezone offset (not UTC), so the
+      // LLM interprets "5:30pm" / "in 2 hours" relative to the user's clock.
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const offsetMin = -now.getTimezoneOffset();
+      const sign = offsetMin >= 0 ? "+" : "-";
+      const absOff = Math.abs(offsetMin);
+      const localIso =
+        `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T` +
+        `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}` +
+        `${sign}${pad(Math.floor(absOff / 60))}:${pad(absOff % 60)}`;
       const created = await api.createReminder(deviceId, text, localIso);
       setReminders((prev) =>
         [...prev, created].sort((a, b) =>
