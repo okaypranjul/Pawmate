@@ -119,7 +119,7 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
       const perm = await ensureNotificationPermission();
       if (perm === "granted") {
         toast.success(
-          "notifications enabled — i'll let you know when reminders are due 🐾"
+          "notifications enabled — i'll let you know when reminders are due"
         );
       }
       queueBubble(`hi! i'm ${name}. tap me anytime to jot a note or a reminder.`);
@@ -198,7 +198,7 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
     queueBubble(sessionMessage.text);
     if (pet) {
       sendBrowserNotification(
-        `${pet.name} 🐾`,
+        `${pet.name}`,
         sessionMessage.text,
         `session-${sessionMessage.ts}`
       );
@@ -270,7 +270,7 @@ export default function PetCompanion({ focusRunning, sessionMessage }) {
         )
       );
       ui.click();
-      queueBubble(`okay! i'll remind you about "${created.content}" 🐾`);
+      queueBubble(`okay! i'll remind you about "${created.content}"`);
     } catch (e) {
       console.warn("addReminder failed:", e);
     }

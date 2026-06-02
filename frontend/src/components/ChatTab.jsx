@@ -52,9 +52,9 @@ export default function ChatTab({ petName, deviceId, onSend }) {
         className="flex-1 overflow-y-auto cozy-scroll space-y-2 pr-1"
       >
         {history.length === 0 && (
-          <div className="text-center text-sm text-[#8A7968] py-6">
+          <div className="text-center text-sm text-[#6E6E6E] py-6">
             say hi to{" "}
-            <span className="font-pixel text-base text-[#4A3B32]">{petName}</span>
+            <span className="font-pixel text-base text-[#0F0F0F]">{petName}</span>
             <br />
             <span className="font-pixel text-xs">try &quot;tell me a joke&quot; or &quot;how are you?&quot;</span>
           </div>
@@ -63,17 +63,17 @@ export default function ChatTab({ petName, deviceId, onSend }) {
           <div
             key={m.id}
             data-testid={`chat-msg-${m.role}`}
-            className={`max-w-[85%] rounded-lg border-2 border-[#4A3B32] px-3 py-2 text-sm ${
+            className={`max-w-[85%] rounded-lg border-2 border-[#0F0F0F] px-3 py-2 text-sm ${
               m.role === "user"
-                ? "bg-[#F2CC8F] ml-auto text-[#4A3B32]"
-                : "bg-white text-[#4A3B32]"
+                ? "bg-[#5C5C5C] ml-auto text-[#0F0F0F]"
+                : "bg-white text-[#0F0F0F]"
             }`}
           >
             <p className="whitespace-pre-wrap break-words leading-snug">{m.text}</p>
           </div>
         ))}
         {busy && (
-          <div className="bg-white border-2 border-[#4A3B32] rounded-lg px-3 py-2 max-w-[85%] inline-flex items-center gap-2 text-[#4A3B32]">
+          <div className="bg-white border-2 border-[#0F0F0F] rounded-lg px-3 py-2 max-w-[85%] inline-flex items-center gap-2 text-[#0F0F0F]">
             <Loader2 size={14} className="animate-spin" />
             <span className="font-pixel text-sm">{petName} is thinking…</span>
           </div>
@@ -87,13 +87,13 @@ export default function ChatTab({ petName, deviceId, onSend }) {
           onChange={(e) => setDraft(e.target.value)}
           placeholder={`talk to ${petName}…`}
           maxLength={300}
-          className="flex-1 bg-white border-2 border-[#4A3B32] rounded-lg px-3 py-2 text-sm text-[#4A3B32] placeholder:text-[#8A7968]/70 focus:outline-none focus:ring-2 focus:ring-[#E07A5F]"
+          className="flex-1 bg-white border-2 border-[#0F0F0F] rounded-lg px-3 py-2 text-sm text-[#0F0F0F] placeholder:text-[#6E6E6E]/70 focus:outline-none focus:ring-2 focus:ring-[#2D2D2D]"
         />
         <button
           data-testid="chat-send-btn"
           type="submit"
           disabled={busy || !draft.trim()}
-          className="bg-[#E07A5F] text-[#FDFBF7] font-bold border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm px-3 py-2 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform disabled:opacity-60 inline-flex items-center gap-1"
+          className="bg-[#2D2D2D] text-[#E5E2D7] font-bold border-2 border-[#0F0F0F] rounded-lg shadow-cozy-sm px-3 py-2 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform disabled:opacity-60 inline-flex items-center gap-1"
         >
           {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
         </button>

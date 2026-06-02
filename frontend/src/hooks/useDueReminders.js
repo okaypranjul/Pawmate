@@ -44,7 +44,7 @@ export default function useDueReminders({
           }
           engine.playMeowAlert().catch((e) => console.warn("meow alert failed:", e));
           sendBrowserNotification(
-            `${pet.name} 🐾`,
+            `${pet.name}`,
             d.message || d.content,
             `reminder-${d.id}`
           );

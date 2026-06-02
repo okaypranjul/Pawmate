@@ -6,14 +6,14 @@
 
 :root {
     /* Cozy palette */
-    --c-primary: #E07A5F;
-    --c-secondary: #F2CC8F;
-    --c-panel: #FDFBF7;
-    --c-app: #F4F1DE;
-    --c-text: #4A3B32;
-    --c-muted: #8A7968;
-    --c-border: #4A3B32;
-    --c-green: #81B29A;
+    --c-primary: #2D2D2D;
+    --c-secondary: #5C5C5C;
+    --c-panel: #E5E2D7;
+    --c-app: #1F1F1F;
+    --c-text: #0F0F0F;
+    --c-muted: #6E6E6E;
+    --c-border: #0F0F0F;
+    --c-green: #3D3D3D;
 }
 
 @layer base {
@@ -147,7 +147,7 @@ body {
 /* Pixel pattern backdrop */
 .cozy-grid {
     background-image:
-        radial-gradient(circle at 1px 1px, rgba(74, 59, 50, 0.07) 1px, transparent 0);
+        radial-gradient(circle at 1px 1px, rgba(15, 15, 15, 0.18) 1px, transparent 0);
     background-size: 22px 22px;
 }
 

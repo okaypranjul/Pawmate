@@ -15,7 +15,7 @@ export default function BackgroundPicker({ current, onChange }) {
   return (
     <div
       data-testid="background-picker"
-      className="fixed bottom-4 left-4 z-[90] bg-[#FDFBF7]/95 backdrop-blur-sm border-2 border-[#4A3B32] rounded-2xl shadow-cozy p-2 flex items-center gap-2"
+      className="fixed bottom-4 left-4 z-[90] bg-[#E5E2D7]/95 backdrop-blur-sm border-2 border-[#0F0F0F] rounded-2xl shadow-cozy p-2 flex items-center gap-2"
     >
       {BACKGROUNDS.map((bg) => {
         const active = bg.key === current;
@@ -31,8 +31,8 @@ export default function BackgroundPicker({ current, onChange }) {
             title={bg.label}
             className={`relative w-12 h-12 rounded-lg overflow-hidden border-2 transition-transform hover:scale-110 active:scale-95 ${
               active
-                ? "border-[#E07A5F] shadow-cozy-sm ring-2 ring-[#E07A5F]/40"
-                : "border-[#4A3B32]"
+                ? "border-[#2D2D2D] shadow-cozy-sm ring-2 ring-[#2D2D2D]/40"
+                : "border-[#0F0F0F]"
             }`}
           >
             <img

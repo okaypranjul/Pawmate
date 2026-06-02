@@ -6,9 +6,9 @@ import ui from "../lib/uiSounds";
 import { engine } from "../lib/audio";
 
 const SESSIONS = {
-  deep: { label: "deep work", minutes: 25, icon: Timer, accent: "#E07A5F" },
-  flow: { label: "flow state", minutes: 50, icon: Sparkles, accent: "#81B29A" },
-  break: { label: "break", minutes: 5, icon: Coffee, accent: "#F2CC8F" },
+  deep: { label: "deep work", minutes: 25, icon: Timer, accent: "#2D2D2D" },
+  flow: { label: "flow state", minutes: 50, icon: Sparkles, accent: "#3D3D3D" },
+  break: { label: "break", minutes: 5, icon: Coffee, accent: "#5C5C5C" },
 };
 
 function fmt(s) {
@@ -125,16 +125,16 @@ export default function FocusTimer({ onRunningChange, onSessionComplete }) {
   return (
     <section
       data-testid="focus-panel"
-      className="bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-2xl shadow-cozy-lg overflow-hidden"
+      className="bg-[#E5E2D7] border-2 border-[#0F0F0F] rounded-2xl shadow-cozy-lg overflow-hidden"
     >
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-[#81B29A] border-b-2 border-[#4A3B32]">
-        <div className="w-10 h-10 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm shrink-0">
-          <Timer size={16} className="text-[#4A3B32]" />
+      <div className="flex items-center gap-3 px-4 py-3 bg-[#3D3D3D] border-b-2 border-[#0F0F0F]">
+        <div className="w-10 h-10 grid place-items-center bg-[#E5E2D7] border-2 border-[#0F0F0F] rounded-lg shadow-cozy-sm shrink-0">
+          <Timer size={16} className="text-[#0F0F0F]" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-pixel text-xl text-[#FDFBF7] leading-none">focus</div>
-          <div className="text-[11px] text-[#FDFBF7]/90 mt-1">
+          <div className="font-pixel text-xl text-[#E5E2D7] leading-none">focus</div>
+          <div className="text-[11px] text-[#E5E2D7]/90 mt-1">
             {running ? (
               <span data-testid="focus-status">
                 running · <span className="font-pixel text-xs">{fmt(remaining)}</span>
@@ -163,12 +163,12 @@ export default function FocusTimer({ onRunningChange, onSessionComplete }) {
                 data-testid={`session-${key}`}
                 onClick={() => pickSession(key)}
                 disabled={running}
-                className={`border-2 border-[#4A3B32] rounded-lg p-1.5 text-[11px] font-bold transition-transform disabled:opacity-60 disabled:cursor-not-allowed ${
-                  active ? "shadow-cozy-sm" : "bg-[#FDFBF7]"
+                className={`border-2 border-[#0F0F0F] rounded-lg p-1.5 text-[11px] font-bold transition-transform disabled:opacity-60 disabled:cursor-not-allowed ${
+                  active ? "shadow-cozy-sm" : "bg-[#E5E2D7]"
                 }`}
                 style={{
                   background: active ? s.accent : undefined,
-                  color: active ? "#FDFBF7" : "#4A3B32",
+                  color: active ? "#E5E2D7" : "#0F0F0F",
                 }}
               >
                 <Icon size={12} className="mx-auto mb-0.5" />
@@ -182,15 +182,15 @@ export default function FocusTimer({ onRunningChange, onSessionComplete }) {
         {/* countdown */}
         <div
           data-testid="timer-display"
-          className="relative bg-[#F4F1DE] border-2 border-[#4A3B32] rounded-xl px-4 py-4 text-center shadow-cozy-sm"
+          className="relative bg-[#D2CDBC] border-2 border-[#0F0F0F] rounded-xl px-4 py-4 text-center shadow-cozy-sm"
         >
-          <div className="font-pixel text-[56px] sm:text-[64px] leading-none text-[#4A3B32]">
+          <div className="font-pixel text-[56px] sm:text-[64px] leading-none text-[#0F0F0F]">
             {fmt(remaining)}
           </div>
-          <div className="font-pixel text-xs text-[#8A7968] mt-1 uppercase tracking-wider">
+          <div className="font-pixel text-xs text-[#6E6E6E] mt-1 uppercase tracking-wider">
             {meta.label}
           </div>
-          <div className="mt-3 h-2.5 bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-full overflow-hidden">
+          <div className="mt-3 h-2.5 bg-[#E5E2D7] border-2 border-[#0F0F0F] rounded-full overflow-hidden">
             <div
               className="h-full transition-[width] duration-700 ease-out"
               style={{ width: `${pct}%`, background: meta.accent }}
@@ -204,7 +204,7 @@ export default function FocusTimer({ onRunningChange, onSessionComplete }) {
             <button
               data-testid="pause-btn"
               onClick={pause}
-              className="flex-1 inline-flex items-center justify-center gap-2 bg-[#F2CC8F] text-[#4A3B32] font-bold border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm py-2.5 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-[#5C5C5C] text-[#0F0F0F] font-bold border-2 border-[#0F0F0F] rounded-lg shadow-cozy-sm py-2.5 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
             >
               <Pause size={14} /> pause
             </button>
@@ -212,7 +212,7 @@ export default function FocusTimer({ onRunningChange, onSessionComplete }) {
             <button
               data-testid="start-btn"
               onClick={start}
-              className="flex-1 inline-flex items-center justify-center gap-2 bg-[#E07A5F] text-[#FDFBF7] font-bold border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm py-2.5 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-[#2D2D2D] text-[#E5E2D7] font-bold border-2 border-[#0F0F0F] rounded-lg shadow-cozy-sm py-2.5 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
             >
               <Play size={14} /> start
             </button>
@@ -221,9 +221,9 @@ export default function FocusTimer({ onRunningChange, onSessionComplete }) {
             data-testid="reset-btn"
             onClick={reset}
             aria-label="reset"
-            className="w-11 h-11 grid place-items-center bg-[#FDFBF7] border-2 border-[#4A3B32] rounded-lg shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
+            className="w-11 h-11 grid place-items-center bg-[#E5E2D7] border-2 border-[#0F0F0F] rounded-lg shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
           >
-            <RotateCcw size={14} className="text-[#4A3B32]" />
+            <RotateCcw size={14} className="text-[#0F0F0F]" />
           </button>
         </div>
       </div>
