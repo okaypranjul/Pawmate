@@ -150,7 +150,7 @@ export default function NotesPanel({
                       {r.content}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <span className="font-pixel bg-[#192853] border border-[#0F0F0F] rounded text-xs px-1.5 py-0.5 shadow-cozy-sm inline-flex items-center gap-1">
+                      <span className="font-pixel bg-[#192853] text-white border border-[#0F0F0F] rounded text-xs px-1.5 py-0.5 shadow-cozy-sm inline-flex items-center gap-1">
                         <Clock size={10} />
                         {formatTime(r.trigger_at)}
                       </span>
