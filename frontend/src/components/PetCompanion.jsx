@@ -19,8 +19,8 @@ import useDueReminders from "../hooks/useDueReminders";
 import useStroll from "../hooks/useStroll";
 
 const HOME_RIGHT = 24;
-const HOME_TOP = 10;
-const SPRITE_SIZE = 84;
+const HOME_TOP = 8;
+const SPRITE_SIZE = 128;
 
 const HEARTBEAT_MS = 60 * 1000;
 const NUDGE_MIN_MS = 20 * 60 * 1000;

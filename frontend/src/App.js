@@ -67,15 +67,15 @@ export default function App() {
         }}
       />
 
-      {/* Top black strip — the floor the cat walks on */}
+      {/* Subtle dark overlay over the background so the cat (and panels) pop, stronger at the top */}
       <div
         aria-hidden
-        data-testid="top-black-strip"
-        className="fixed top-0 left-0 right-0 h-[100px] bg-black pointer-events-none z-[50]"
+        data-testid="bg-overlay"
+        className="fixed inset-0 pointer-events-none z-[5] bg-gradient-to-b from-black/45 via-black/15 to-black/20"
       />
 
-      <main className="relative z-[20] max-w-5xl mx-auto px-5 sm:px-8 pt-32 pb-24">
-        <div className="grid gap-5 md:grid-cols-2">
+      <main className="relative z-[20] max-w-5xl mx-auto px-5 sm:px-8 min-h-screen flex items-center justify-center py-32">
+        <div className="w-full grid gap-5 md:grid-cols-2">
           <FocusTimer
             onRunningChange={setFocusRunning}
             onSessionComplete={handleSessionComplete}
