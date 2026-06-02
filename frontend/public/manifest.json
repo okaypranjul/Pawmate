@@ -1,6 +1,6 @@
 {
-  "name": "PixelPet — your tiny desk friend",
-  "short_name": "PixelPet",
+  "name": "PawMate — your tiny desk friend",
+  "short_name": "PawMate",
   "description": "A cozy pixel cat that holds your notes, reminders, focus sessions, and ambient sounds.",
   "start_url": ".",
   "scope": ".",
@@ -10,13 +10,13 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "https://static.prod-images.emergentagent.com/jobs/ec3808b6-b0af-4f34-8a4a-3ff78eddfdf9/images/0ba86426a286100dc963366cfaaae51f1558d9a882931ee2bda749e8e23c0049.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://static.prod-images.emergentagent.com/jobs/ec3808b6-b0af-4f34-8a4a-3ff78eddfdf9/images/0ba86426a286100dc963366cfaaae51f1558d9a882931ee2bda749e8e23c0049.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
