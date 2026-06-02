@@ -74,10 +74,10 @@ export default function NotesPanel({
   return (
     <div
       data-testid="notes-panel"
-      className="bg-[#E5E2D7] border-4 border-[#0F0F0F] rounded-2xl shadow-cozy-lg overflow-hidden w-[340px] sm:w-[380px] max-h-[78vh] flex flex-col"
+      className="bg-[#EFF8FF] border-4 border-[#0F0F0F] rounded-2xl shadow-cozy-lg overflow-hidden w-[340px] sm:w-[380px] max-h-[78vh] flex flex-col"
     >
       {/* Header */}
-      <div className="bg-[#5C5C5C] border-b-2 border-[#0F0F0F] px-4 py-3 flex items-center justify-between">
+      <div className="bg-[#192853] border-b-2 border-[#0F0F0F] px-4 py-3 flex items-center justify-between">
         <div>
           <h3 className="font-pixel text-2xl text-white leading-none">
             {petName}'s desk
@@ -88,7 +88,7 @@ export default function NotesPanel({
           data-testid="close-panel-btn"
           onClick={onClose}
           aria-label="close panel"
-          className="w-9 h-9 grid place-items-center bg-[#E5E2D7] border-2 border-[#0F0F0F] rounded-lg shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
+          className="w-9 h-9 grid place-items-center bg-[#EFF8FF] border-2 border-[#0F0F0F] rounded-lg shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform"
         >
           <X size={16} className="text-[#0F0F0F]" />
         </button>
@@ -101,8 +101,8 @@ export default function NotesPanel({
           onClick={() => setTab("reminders")}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-[#0F0F0F] text-sm font-bold transition-transform ${
             tab === "reminders"
-              ? "bg-[#2D2D2D] text-[#E5E2D7] shadow-cozy-sm"
-              : "bg-[#E5E2D7] text-[#0F0F0F]"
+              ? "bg-[#FFE14E] text-[#192853] shadow-cozy-sm"
+              : "bg-[#EFF8FF] text-[#0F0F0F]"
           }`}
         >
           <Bell size={14} />
@@ -116,8 +116,8 @@ export default function NotesPanel({
           onClick={() => setTab("notes")}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-[#0F0F0F] text-sm font-bold transition-transform ${
             tab === "notes"
-              ? "bg-[#2D2D2D] text-[#E5E2D7] shadow-cozy-sm"
-              : "bg-[#E5E2D7] text-[#0F0F0F]"
+              ? "bg-[#FFE14E] text-[#192853] shadow-cozy-sm"
+              : "bg-[#EFF8FF] text-[#0F0F0F]"
           }`}
         >
           <StickyNote size={14} />
@@ -129,8 +129,8 @@ export default function NotesPanel({
           onClick={() => setTab("chat")}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-[#0F0F0F] text-sm font-bold transition-transform ${
             tab === "chat"
-              ? "bg-[#2D2D2D] text-[#E5E2D7] shadow-cozy-sm"
-              : "bg-[#E5E2D7] text-[#0F0F0F]"
+              ? "bg-[#FFE14E] text-[#192853] shadow-cozy-sm"
+              : "bg-[#EFF8FF] text-[#0F0F0F]"
           }`}
         >
           <MessageCircle size={14} />
@@ -164,7 +164,7 @@ export default function NotesPanel({
                       {r.content}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <span className="font-pixel bg-[#5C5C5C] border border-[#0F0F0F] rounded text-xs px-1.5 py-0.5 shadow-cozy-sm inline-flex items-center gap-1">
+                      <span className="font-pixel bg-[#192853] border border-[#0F0F0F] rounded text-xs px-1.5 py-0.5 shadow-cozy-sm inline-flex items-center gap-1">
                         <Clock size={10} />
                         {formatTime(r.trigger_at)}
                       </span>
@@ -179,7 +179,7 @@ export default function NotesPanel({
                     data-testid={`delete-reminder-${r.id}`}
                     onClick={() => onDeleteReminder(r.id)}
                     aria-label="delete reminder"
-                    className="w-7 h-7 grid place-items-center bg-[#E5E2D7] border-2 border-[#0F0F0F] rounded shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform shrink-0"
+                    className="w-7 h-7 grid place-items-center bg-[#EFF8FF] border-2 border-[#0F0F0F] rounded shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform shrink-0"
                   >
                     <Trash2 size={12} className="text-[#0F0F0F]" />
                   </button>
@@ -208,7 +208,7 @@ export default function NotesPanel({
                   data-testid={`delete-note-${n.id}`}
                   onClick={() => onDeleteNote(n.id)}
                   aria-label="delete note"
-                  className="w-7 h-7 grid place-items-center bg-[#E5E2D7] border-2 border-[#0F0F0F] rounded shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform shrink-0"
+                  className="w-7 h-7 grid place-items-center bg-[#EFF8FF] border-2 border-[#0F0F0F] rounded shadow-cozy-sm active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform shrink-0"
                 >
                   <Trash2 size={12} className="text-[#0F0F0F]" />
                 </button>
@@ -223,7 +223,7 @@ export default function NotesPanel({
 
       {/* Footer input */}
       {tab !== "chat" && (
-      <div className="bg-[#D2CDBC] border-t-2 border-[#0F0F0F] px-3 py-3">
+      <div className="bg-[#EFF8FF] border-t-2 border-[#0F0F0F] px-3 py-3">
         {tab === "reminders" ? (
           <form onSubmit={submitReminder} className="flex items-center gap-2">
             <input
@@ -232,13 +232,13 @@ export default function NotesPanel({
               onChange={(e) => setReminderText(e.target.value)}
               placeholder="lunch at 1pm…"
               maxLength={200}
-              className="flex-1 bg-white border-2 border-[#0F0F0F] rounded-lg px-3 py-2 text-sm text-[#0F0F0F] placeholder:text-[#6E6E6E]/70 focus:outline-none focus:ring-2 focus:ring-[#2D2D2D]"
+              className="flex-1 bg-white border-2 border-[#0F0F0F] rounded-lg px-3 py-2 text-sm text-[#0F0F0F] placeholder:text-[#6E6E6E]/70 focus:outline-none focus:ring-2 focus:ring-[#192853]"
             />
             <button
               data-testid="add-reminder-btn"
               type="submit"
               disabled={busy || !reminderText.trim()}
-              className="bg-[#2D2D2D] text-[#E5E2D7] font-bold border-2 border-[#0F0F0F] rounded-lg shadow-cozy-sm px-3 py-2 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform disabled:opacity-60 inline-flex items-center gap-1"
+              className="bg-[#FFE14E] text-[#192853] font-bold border-2 border-[#0F0F0F] rounded-lg shadow-cozy-sm px-3 py-2 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform disabled:opacity-60 inline-flex items-center gap-1"
             >
               {busy ? <Loader2 size={14} className="animate-spin" /> : "add"}
             </button>
@@ -251,13 +251,13 @@ export default function NotesPanel({
               onChange={(e) => setNoteText(e.target.value)}
               placeholder="quick thought…"
               maxLength={500}
-              className="flex-1 bg-white border-2 border-[#0F0F0F] rounded-lg px-3 py-2 text-sm text-[#0F0F0F] placeholder:text-[#6E6E6E]/70 focus:outline-none focus:ring-2 focus:ring-[#2D2D2D]"
+              className="flex-1 bg-white border-2 border-[#0F0F0F] rounded-lg px-3 py-2 text-sm text-[#0F0F0F] placeholder:text-[#6E6E6E]/70 focus:outline-none focus:ring-2 focus:ring-[#192853]"
             />
             <button
               data-testid="add-note-btn"
               type="submit"
               disabled={busy || !noteText.trim()}
-              className="bg-[#2D2D2D] text-[#E5E2D7] font-bold border-2 border-[#0F0F0F] rounded-lg shadow-cozy-sm px-3 py-2 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform disabled:opacity-60 inline-flex items-center gap-1"
+              className="bg-[#FFE14E] text-[#192853] font-bold border-2 border-[#0F0F0F] rounded-lg shadow-cozy-sm px-3 py-2 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-transform disabled:opacity-60 inline-flex items-center gap-1"
             >
               {busy ? <Loader2 size={14} className="animate-spin" /> : "save"}
             </button>
